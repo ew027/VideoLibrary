@@ -1,0 +1,116 @@
+﻿@model VideoLibrary.Models.Video
+
+@{
+    ViewData["Title"] = $"Edit Tags - {Model.Title}";
+    var allTags = ViewBag.AllTags as List<VideoLibrary.Models.Tag>;
+    var currentTagIds = Model.VideoTags.Select(vt => vt.TagId).ToList();
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Tags</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Details", "Video", new { id = Model.Id })">@Model.Title</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Edit Tags</li>
+    </ol>
+</nav>
+
+<h1>Edit Tags - @Model.Title</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Select Tags</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="UpdateTags" method="post">
+                    <input type="hidden" name="videoId" value="@Model.Id">
+
+                    @if (allTags != null && allTags.Any())
+                    {
+                        <div class="mb-3">
+                            @foreach (var tag in allTags)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="selectedTags" value="@tag.Id"
+                                    @(currentTagIds.Contains(tag.Id) ? "checked" : "") id="tag_@tag.Id">
+                                    <label class="form-check-label" for="tag_@tag.Id">
+                                        @tag.Name
+                                        <small class="text-muted">(@tag.VideoTags.Count videos)</small>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No existing tags available. Create a new tag below.</p>
+                    }
+
+                    <button type="submit" class="btn btn-primary">Update Tags</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Add New Tag</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="AddTag" method="post">
+                    <input type="hidden" name="videoId" value="@Model.Id">
+                    <div class="mb-3">
+                        <label for="tagName" class="form-label">Tag Name</label>
+                        <div class="input-group">
+                            <input type="text" name="tagName" id="tagName" class="form-control"
+                                   placeholder="Enter tag name" required>
+                            <button type="submit" class="btn btn-success">Add Tag</button>
+                        </div>
+                        <small class="form-text text-muted">Create and assign a new tag to this video</small>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Current Tags</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.VideoTags.Any())
+                {
+                    <div class="d-flex flex-wrap gap-1">
+                        @foreach (var videoTag in Model.VideoTags)
+                        {
+                            <span class="badge bg-primary">@videoTag.Tag.Name</span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">No tags currently assigned to this video.</p>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.ThumbnailPath))
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Video Preview</h5>
+                </div>
+                <div class="card-body">
+                    <img src="@Url.Action("Thumbnail", "Video", new { id = Model.Id })"
+                         class="img-fluid rounded" alt="Video Thumbnail" style="max-height: 150px;">
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="@Url.Action("Details", "Video", new { id = Model.Id })" class="btn btn-secondary">Back to Video</a>
+    <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary">All Tags</a>
+</div>

@@ -1,0 +1,54 @@
+﻿@model VideoLibrary.Models.Tag
+
+@{
+    ViewData["Title"] = $"Videos tagged: {Model.Name}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Tags</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+    </ol>
+</nav>
+
+<h1>Videos tagged: @Model.Name</h1>
+
+<div class="row">
+    @foreach (var videoTag in Model.VideoTags)
+    {
+        var video = videoTag.Video;
+        <div class="col-md-4 mb-4">
+            <div class="card video-card">
+                @if (!string.IsNullOrEmpty(video.ThumbnailPath))
+                {
+                    <img src="@Url.Action("Thumbnail", "Video", new { id = video.Id })"
+                         class="card-img-top video-thumbnail" alt="@video.Title">
+                }
+                else
+                {
+                    <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <span class="text-muted">Generating Thumbnail...</span>
+                    </div>
+                }
+                <div class="card-body">
+                    <h5 class="card-title">@video.Title</h5>
+                    <p class="card-text">
+                        <small class="text-muted">Added: @video.DateAdded.ToString("MMM dd, yyyy")</small>
+                    </p>
+                    <a href="@Url.Action("Details", "Video", new { id = video.Id })" class="btn btn-primary">Watch</a>
+                    <a href="@Url.Action("Edit", "Video", new { id = video.Id })" class="btn btn-outline-secondary btn-sm">Edit</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (!Model.VideoTags.Any())
+{
+    <div class="alert alert-warning">
+        <h4>No videos found</h4>
+        <p>This tag doesn't have any videos associated with it yet.</p>
+    </div>
+}
+
+<a href="@Url.Action("Index", "Home")" class="btn btn-secondary">Back to Tags</a>

@@ -1,0 +1,41 @@
+﻿@model IEnumerable<VideoLibrary.Models.Tag>
+
+@{
+    ViewData["Title"] = "Video Tags";
+}
+
+<h1>Video Tags</h1>
+
+<div class="row">
+    @foreach (var tag in Model)
+    {
+        <div class="col-md-3 mb-4">
+            <div class="card video-card">
+                @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
+                {
+                    <img src="@Url.Action("Thumbnail", "Video", new { id = tag.VideoTags.FirstOrDefault()?.VideoId })"
+                         class="card-img-top video-thumbnail" alt="@tag.Name">
+                }
+                else
+                {
+                    <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <span class="text-muted">No Thumbnail</span>
+                    </div>
+                }
+                <div class="card-body">
+                    <h5 class="card-title">@tag.Name</h5>
+                    <p class="card-text">@tag.VideoTags.Count video@(tag.VideoTags.Count == 1 ? "" : "s")</p>
+                    <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Id })" class="btn btn-primary">View Videos</a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        <h4>No tags found</h4>
+        <p>Videos are being scanned in the background. Tags will appear here once videos are processed and tagged.</p>
+    </div>
+}
