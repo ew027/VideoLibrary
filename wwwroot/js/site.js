@@ -5,13 +5,13 @@
 
 document.addEventListener('DOMContentLoaded', function () {
     // Add loading indicators for thumbnail refresh
-    const refreshButtons = document.querySelectorAll('form[action*="RefreshThumbnail"] button[type="submit"]');
-    refreshButtons.forEach(button => {
-        button.addEventListener('click', function () {
-            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Refreshing...';
-            this.disabled = true;
-        });
-    });
+    //const refreshButtons = document.querySelectorAll('form[action*="RefreshThumbnail"] button[type="submit"]');
+    //refreshButtons.forEach(button => {
+    //    button.addEventListener('click', function () {
+    //        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Refreshing...';
+    //        this.disabled = true;
+    //    });
+    //});
 
     // Add confirmation for tag updates
     const tagForms = document.querySelectorAll('form[action*="UpdateTags"]');

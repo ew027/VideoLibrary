@@ -1,0 +1,194 @@
+﻿@model VideoLibrary.Models.AdminDashboardViewModel
+
+@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Admin Dashboard</h1>
+    <div>
+        <a href="@Url.Action("Statistics")" class="btn btn-outline-info">Statistics</a>
+        <a href="@Url.Action("RecentVideos")" class="btn btn-outline-info">Recent Videos</a>
+        <a href="@Url.Action("Index", "Database")" class="btn btn-outline-info">Database Queries</a>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Stats Overview -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Total Videos</h5>
+                <h2 class="text-primary">@Model.TotalVideos</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Total Tags</h5>
+                <h2 class="text-info">@Model.TotalTags</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">With Thumbnails</h5>
+                <h2 class="text-success">@Model.VideosWithThumbnails</h2>
+                <small class="text-muted">(@Model.ThumbnailProgress.ToString("F1")%)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Analyzed</h5>
+                <h2 class="text-warning">@Model.VideosWithAnalysis</h2>
+                <small class="text-muted">(@Model.AnalysisProgress.ToString("F1")%)</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Bars -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Thumbnail Generation Progress</h5>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-2">
+                    <div class="progress-bar bg-success" style="width: @Model.ThumbnailProgress%"></div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <small>@Model.VideosWithThumbnails of @Model.TotalVideos completed</small>
+                    <small>@Model.VideosWithoutThumbnails remaining</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Video Analysis Progress</h5>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-2">
+                    <div class="progress-bar bg-warning" style="width: @Model.AnalysisProgress%"></div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <small>@Model.VideosWithAnalysis of @Model.TotalVideos completed</small>
+                    <small>@Model.VideosWithoutAnalysis remaining</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Manual Operations</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="d-grid">
+                            <form asp-action="ScanVideos" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-search"></i><br>
+                                    <small>Scan for Videos</small>
+                                </button>
+                            </form>
+                        </div>
+                        <small class="text-muted d-block mt-1">Search for new video files in the configured folder</small>
+                    </div>
+
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="d-grid">
+                            <form asp-action="GenerateThumbnails" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="bi bi-image"></i><br>
+                                    <small>Generate Thumbnails</small>
+                                </button>
+                            </form>
+                        </div>
+                        <small class="text-muted d-block mt-1">Create thumbnails for videos that don't have them</small>
+                    </div>
+
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="d-grid">
+                            <form asp-action="AnalyzeVideos" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-warning btn-lg">
+                                    <i class="bi bi-analytics"></i><br>
+                                    <small>Analyze Videos</small>
+                                </button>
+                            </form>
+                        </div>
+                        <small class="text-muted d-block mt-1">Extract metadata like duration, resolution, and codecs</small>
+                    </div>
+
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="d-grid">
+                            <form asp-action="UpdateTagThumbnails" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-info btn-lg">
+                                    <i class="bi bi-tags"></i><br>
+                                    <small>Update Tag Thumbnails</small>
+                                </button>
+                            </form>
+                        </div>
+                        <small class="text-muted d-block mt-1">Assign thumbnails to tags from their videos</small>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row">
+                    <div class="col-12 text-center">
+                        <form asp-action="RunAllTasks" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="bi bi-play-circle"></i> Run Complete Maintenance Cycle
+                            </button>
+                        </form>
+                        <div class="mt-2">
+                            <small class="text-muted">Runs all operations in sequence: Scan → Thumbnails → Analysis → Tag Thumbnails</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add loading states to buttons
+        const forms = document.querySelectorAll('form[method="post"]');
+        forms.forEach(form => {
+            form.addEventListener('submit', function() {
+                const button = this.querySelector('button[type="submit"]');
+                const originalHtml = button.innerHTML;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Running...';
+                button.disabled = true;
+
+                // Re-enable after a delay to prevent confusion
+                setTimeout(() => {
+                    button.innerHTML = originalHtml;
+                    button.disabled = false;
+                }, 3000);
+            });
+        });
+    });
+</script>

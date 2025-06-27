@@ -2,18 +2,72 @@
 
 @{
     ViewData["Title"] = "Video Tags";
+
+    var startLetters = new List<string>();
+    var prevLetter = "";
+
+    foreach (var tag in Model)
+    {
+        var firstLetter = tag.Name.Substring(0, 1);
+
+        if (firstLetter != prevLetter)
+        {
+            startLetters.Add(firstLetter);
+            prevLetter = firstLetter;
+        }
+    }
+
+    var letterIndex = 0;
 }
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <h1>Video Tags</h1>
 
-<h1>Video Tags</h1>
+    <div class="btn-group">
+        <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-play-circle"></i> Create Playlist
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="@Url.Action("All", "Playlist")">
+                    <i class="bi bi-collection-play"></i> All Videos
+                </a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Recent", "Playlist")">
+                    <i class="bi bi-clock-history"></i> Recently Added
+                </a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Random", "Playlist")">
+                    <i class="bi bi-shuffle"></i> Random Playlist
+                </a></li>
+        </ul>
+    </div>
+</div>
+<strong>
+    <a name="top"></a>
+    @foreach (var letter in startLetters)
+    {
+        <a href="#sw-@letter" style="padding-right: 5px; font-size: 1.2em;">@letter</a>
+    }
 
+</strong>
 <div class="row">
     @foreach (var tag in Model)
     {
+        @if (tag.Name.Substring(0, 1).ToLower() == startLetters[letterIndex])
+        {
+            <a href="#top">top</a> <a name="sw-@startLetters[letterIndex]"></a>
+            if (letterIndex < startLetters.Count - 1)
+            {
+                letterIndex++;
+            }
+            else
+            {
+                letterIndex = 0;
+            }
+        }
         <div class="col-md-3 mb-4">
+            <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Id })" class="video-link">
             <div class="card video-card">
                 @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
                 {
-                    <img src="@Url.Action("Thumbnail", "Video", new { id = tag.VideoTags.FirstOrDefault()?.VideoId })"
+                    <img src="@Url.Action("SmallThumbnail", "Video", new { id = tag.VideoTags.FirstOrDefault()?.VideoId })"
                          class="card-img-top video-thumbnail" alt="@tag.Name">
                 }
                 else
@@ -25,9 +79,10 @@
                 <div class="card-body">
                     <h5 class="card-title">@tag.Name</h5>
                     <p class="card-text">@tag.VideoTags.Count video@(tag.VideoTags.Count == 1 ? "" : "s")</p>
-                    <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Id })" class="btn btn-primary">View Videos</a>
+                    
                 </div>
             </div>
+            </a>
         </div>
     }
 </div>

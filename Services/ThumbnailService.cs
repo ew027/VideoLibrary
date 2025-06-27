@@ -1,6 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using VideoLibrary.Models;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using static System.Net.Mime.MediaTypeNames;
+using Image = SixLabors.ImageSharp.Image;
 
 namespace VideoLibrary.Services
 {
@@ -20,7 +24,7 @@ namespace VideoLibrary.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             // Wait a bit before starting thumbnail generation
-            await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -30,10 +34,12 @@ namespace VideoLibrary.Services
             }
         }
 
-        private async Task GenerateThumbnailsAsync()
+        public async Task GenerateThumbnailsAsync()
         {
             try
             {
+                _logger.LogInformation("Starting thumbnail generation...");
+
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -42,9 +48,11 @@ namespace VideoLibrary.Services
                     .ToListAsync();
 
                 var thumbnailFolderPath = _configuration["VideoLibrary:ThumbnailFolderPath"];
-                if (string.IsNullOrEmpty(thumbnailFolderPath))
+                var ffmpegPath = _configuration["FFmpegPath"];
+
+                if (string.IsNullOrEmpty(thumbnailFolderPath) || string.IsNullOrEmpty(ffmpegPath))
                 {
-                    _logger.LogWarning("Thumbnail folder path not configured");
+                    _logger.LogWarning("Thumbnail folder path or ffmpeg path not configured");
                     return;
                 }
 
@@ -52,7 +60,7 @@ namespace VideoLibrary.Services
 
                 foreach (var video in videosWithoutThumbnails)
                 {
-                    await GenerateVideoThumbnail(video, thumbnailFolderPath);
+                    await GenerateVideoThumbnail(video, thumbnailFolderPath, ffmpegPath, ThumbnailMode.New);
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -63,18 +71,47 @@ namespace VideoLibrary.Services
             }
         }
 
-        private async Task GenerateVideoThumbnail(Video video, string thumbnailFolderPath)
+        private async Task GenerateVideoThumbnail(Video video, string thumbnailFolderPath, string ffmpegPath, ThumbnailMode mode, int timePoint = 30)
         {
             try
             {
-                var thumbnailFileName = $"{Path.GetFileNameWithoutExtension(video.FilePath)}_thumb.jpg";
+                var baseFileName = Path.GetFileNameWithoutExtension(video.FilePath);
+                
+                var thumbnailFileName = $"{baseFileName}_thumb.jpg";
                 var thumbnailPath = Path.Combine(thumbnailFolderPath, thumbnailFileName);
 
-                var ffmpegArgs = $"-i \"{video.FilePath}\" -ss 00:00:30 -vframes 1 -y \"{thumbnailPath}\"";
+                var smallThumbnailFileName = $"{baseFileName}_thumb_small.jpg";
+                var smallThumbnailPath = Path.Combine(thumbnailFolderPath, smallThumbnailFileName);
+
+                if (File.Exists(thumbnailPath) && File.Exists(smallThumbnailPath) && mode == ThumbnailMode.New)
+                {
+                    _logger.LogInformation("Thumbnail already exists for: {Title}", video.Title);
+                    video.ThumbnailPath = thumbnailPath;
+                    return;
+                }
+
+                if (File.Exists(thumbnailPath) && !File.Exists(smallThumbnailPath) && mode == ThumbnailMode.New)
+                {
+                    _logger.LogInformation("Generating small thumbnail for: {Title}", video.Title);
+                    video.ThumbnailPath = thumbnailPath;
+
+                    await GenerateSmallThumbnail(thumbnailPath, smallThumbnailPath);
+                    
+                    return;
+                }
+
+                if (video.FilePath.Contains("clips") && mode == ThumbnailMode.New)
+                {
+                    timePoint = 5; // Special case for clips
+                }
+
+                var thumbPoint = TimeSpan.FromSeconds(timePoint).ToString(@"hh\:mm\:ss");
+
+                var ffmpegArgs = $"-i \"{video.FilePath}\" -ss {thumbPoint} -vframes 1 -y \"{thumbnailPath}\"";
 
                 var processInfo = new ProcessStartInfo
                 {
-                    FileName = "ffmpeg",
+                    FileName = ffmpegPath,
                     Arguments = ffmpegArgs,
                     UseShellExecute = false,
                     CreateNoWindow = true,
@@ -91,6 +128,9 @@ namespace VideoLibrary.Services
                     {
                         video.ThumbnailPath = thumbnailPath;
                         _logger.LogInformation("Generated thumbnail for: {Title}", video.Title);
+
+                        // Generate small thumbnail from the full-size one
+                        await GenerateSmallThumbnail(thumbnailPath, smallThumbnailPath);
                     }
                     else
                     {
@@ -108,6 +148,8 @@ namespace VideoLibrary.Services
         {
             try
             {
+                _logger.LogInformation($"Generating thumbnail for video ID {videoId} at {seconds} seconds");
+
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -115,40 +157,11 @@ namespace VideoLibrary.Services
                 if (video == null) return;
 
                 var thumbnailFolderPath = _configuration["VideoLibrary:ThumbnailFolderPath"];
-                if (string.IsNullOrEmpty(thumbnailFolderPath)) return;
+                var ffmpegPath = _configuration["FFmpegPath"];
 
-                Directory.CreateDirectory(thumbnailFolderPath);
+                if (string.IsNullOrEmpty(thumbnailFolderPath) || string.IsNullOrEmpty(ffmpegPath)) return;
 
-                var thumbnailFileName = $"{Path.GetFileNameWithoutExtension(video.FilePath)}_thumb.jpg";
-                var thumbnailPath = Path.Combine(thumbnailFolderPath, thumbnailFileName);
-
-                var timeSpan = TimeSpan.FromSeconds(seconds);
-                var timeString = timeSpan.ToString(@"hh\:mm\:ss");
-
-                var ffmpegArgs = $"-i \"{video.FilePath}\" -ss {timeString} -vframes 1 -y \"{thumbnailPath}\"";
-
-                var processInfo = new ProcessStartInfo
-                {
-                    FileName = "ffmpeg",
-                    Arguments = ffmpegArgs,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
-
-                using var process = Process.Start(processInfo);
-                if (process != null)
-                {
-                    await process.WaitForExitAsync();
-
-                    if (process.ExitCode == 0 && File.Exists(thumbnailPath))
-                    {
-                        video.ThumbnailPath = thumbnailPath;
-                        await dbContext.SaveChangesAsync();
-                        _logger.LogInformation("Updated thumbnail for: {Title} at {Seconds}s", video.Title, seconds);
-                    }
-                }
+                await GenerateVideoThumbnail(video, thumbnailFolderPath, ffmpegPath, ThumbnailMode.Recreate, seconds);
             }
             catch (Exception ex)
             {
@@ -156,7 +169,43 @@ namespace VideoLibrary.Services
             }
         }
 
-        private async Task UpdateTagThumbnailsAsync()
+        public string GetSmallThumbnailPath(string thumbnailPath)
+        {
+            if (string.IsNullOrEmpty(thumbnailPath))
+                return string.Empty;
+
+            var directory = Path.GetDirectoryName(thumbnailPath);
+            var fileNameWithoutExt = Path.GetFileNameWithoutExtension(thumbnailPath);
+            var extension = Path.GetExtension(thumbnailPath);
+
+            return Path.Combine(directory!, $"{fileNameWithoutExt}_small{extension}");
+        }
+
+        private async Task GenerateSmallThumbnail(string sourcePath, string destinationPath)
+        {
+            try
+            {
+                using var image = await Image.LoadAsync(sourcePath);
+
+                // Calculate new dimensions maintaining aspect ratio
+                var maxWidth = 400;
+                var aspectRatio = (double)image.Height / image.Width;
+                var newWidth = Math.Min(image.Width, maxWidth);
+                var newHeight = (int)(newWidth * aspectRatio);
+
+                // Resize and save
+                image.Mutate(x => x.Resize(newWidth, newHeight));
+                await image.SaveAsJpegAsync(destinationPath);
+
+                _logger.LogDebug("Generated small thumbnail: {Path}", destinationPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating small thumbnail from: {SourcePath}", sourcePath);
+            }
+        }
+
+        public async Task UpdateTagThumbnailsAsync()
         {
             try
             {
@@ -188,6 +237,12 @@ namespace VideoLibrary.Services
                 _logger.LogError(ex, "Error updating tag thumbnails");
             }
         }
+    }
+
+    public enum ThumbnailMode
+    {
+        New,
+        Recreate
     }
 }
 

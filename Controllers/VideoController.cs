@@ -1,19 +1,31 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VideoLibrary.Models;
 using VideoLibrary.Services;
 
 namespace VideoLibrary.Controllers
 {
+    [Authorize]
     public class VideoController : Controller
     {
         private readonly AppDbContext _context;
         private readonly ThumbnailService _thumbnailService;
+        private readonly VideoAnalysisService _videoAnalysisService;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<VideoController> _logger;
 
-        public VideoController(AppDbContext context, ThumbnailService thumbnailService)
+        public VideoController(AppDbContext context, 
+            ThumbnailService thumbnailService, 
+            VideoAnalysisService videoAnalysisService, 
+            ILogger<VideoController> logger, 
+            IServiceProvider serviceProvider)
         {
             _context = context;
             _thumbnailService = thumbnailService;
+            _videoAnalysisService = videoAnalysisService;
+            _logger = logger;
+            _serviceProvider = serviceProvider;
         }
 
         public async Task<IActionResult> Details(int id)
@@ -146,6 +158,94 @@ namespace VideoLibrary.Controllers
 
             var fileStream = new FileStream(video.ThumbnailPath, FileMode.Open, FileAccess.Read);
             return File(fileStream, "image/jpeg");
+        }
+
+        public IActionResult SmallThumbnail(int id)
+        {
+            var video = _context.Videos.Find(id);
+            if (video == null || string.IsNullOrEmpty(video.ThumbnailPath))
+            {
+                return NotFound();
+            }
+
+            var smallThumbnailPath = _thumbnailService.GetSmallThumbnailPath(video.ThumbnailPath);
+
+            if (!System.IO.File.Exists(smallThumbnailPath))
+            {
+                return NotFound();
+            }
+
+            var fileStream = new FileStream(smallThumbnailPath, FileMode.Open, FileAccess.Read);
+            return File(fileStream, "image/jpeg");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ReAnalyzeVideo(int videoId)
+        {
+            var success = await _videoAnalysisService.ReAnalyzeVideo(videoId);
+            if (success)
+            {
+                TempData["SuccessMessage"] = "Video analysis updated successfully";
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "Failed to analyze video";
+            }
+
+            return RedirectToAction(nameof(Details), new { id = videoId });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveNotes(int videoId, string notes)
+        {
+            var video = await _context.Videos.FindAsync(videoId);
+            if (video == null)
+            {
+                return NotFound();
+            }
+
+            video.Notes = notes;
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Notes saved successfully";
+            return RedirectToAction(nameof(Details), new { id = videoId });
+        }
+
+        [HttpPost]
+        public IActionResult CreateClip(int videoId, double startSeconds, double endSeconds)
+        {
+            if (startSeconds >= endSeconds)
+            {
+                TempData["ErrorMessage"] = "End time must be after start time";
+                return RedirectToAction(nameof(Details), new { id = videoId });
+            }
+
+            if (startSeconds < 0)
+            {
+                TempData["ErrorMessage"] = "Start time cannot be negative";
+                return RedirectToAction(nameof(Details), new { id = videoId });
+            }
+
+            // Start clip creation in background
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var clippingService = scope.ServiceProvider.GetRequiredService<VideoClippingService>();
+                    var success = await clippingService.CreateClipAsync(videoId, startSeconds, endSeconds);
+
+                    _logger.LogInformation("Clip creation {Status} for video {VideoId}",
+                        success ? "completed" : "failed", videoId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in background clip creation for video {VideoId}", videoId);
+                }
+            });
+
+            TempData["SuccessMessage"] = "Clip creation started in the background. The new clip will appear in your library shortly.";
+            return RedirectToAction(nameof(Details), new { id = videoId });
         }
 
         private string GetContentType(string filePath)

@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using VideoLibrary.Models;
 
@@ -31,10 +32,12 @@ namespace VideoLibrary.Services
             }
         }
 
-        private async Task ScanVideosAsync()
+        public async Task ScanVideosAsync()
         {
             try
             {
+                _logger.LogInformation("Starting video scan...");
+                
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -49,7 +52,11 @@ namespace VideoLibrary.Services
                     .Where(file => _videoExtensions.Contains(Path.GetExtension(file).ToLowerInvariant()))
                     .ToList();
 
+                _logger.LogInformation("Found {Count} video files in {Path}", videoFiles.Count, videoFolderPath);
+
                 var existingVideos = await dbContext.Videos.Select(v => v.FilePath).ToListAsync();
+
+                _logger.LogInformation("Found {Count} existing videos in database", existingVideos.Count);
 
                 foreach (var videoFile in videoFiles)
                 {
@@ -64,6 +71,59 @@ namespace VideoLibrary.Services
 
                         dbContext.Videos.Add(video);
                         _logger.LogInformation("Added new video: {Title}", video.Title);
+
+                        await dbContext.SaveChangesAsync();
+
+                        if (video.FilePath.Contains("clips"))
+                        {
+                            var existingTag = await dbContext.Tags.FirstOrDefaultAsync(t => t.Name == "clips");
+                            if (existingTag == null)
+                            {
+                                existingTag = new Tag { Name = "clips" };
+                                dbContext.Tags.Add(existingTag);
+                                await dbContext.SaveChangesAsync();
+                            }
+
+                            var existingVideoTag = await dbContext.VideoTags
+                                .FirstOrDefaultAsync(vt => vt.VideoId == video.Id && vt.TagId == existingTag.Id);
+
+                            if (existingVideoTag == null)
+                            {
+                                dbContext.VideoTags.Add(new VideoTag { VideoId = video.Id, TagId = existingTag.Id });
+                                await dbContext.SaveChangesAsync();
+                            }
+                        }
+                        else
+                        {
+                            var tags = video.Title.Split('_');
+
+                            foreach (var tagName in tags)
+                            {
+                                // check it's not a number
+                                if (int.TryParse(tagName, out _))
+                                    continue;
+
+                                var existingTag = await dbContext.Tags.FirstOrDefaultAsync(t => t.Name == tagName);
+                                if (existingTag == null)
+                                {
+                                    existingTag = new Tag { Name = tagName };
+                                    dbContext.Tags.Add(existingTag);
+                                    await dbContext.SaveChangesAsync();
+                                }
+
+                                var existingVideoTag = await dbContext.VideoTags
+                                    .FirstOrDefaultAsync(vt => vt.VideoId == video.Id && vt.TagId == existingTag.Id);
+
+                                if (existingVideoTag == null)
+                                {
+                                    dbContext.VideoTags.Add(new VideoTag { VideoId = video.Id, TagId = existingTag.Id });
+                                    await dbContext.SaveChangesAsync();
+                                }
+                            }
+                        }
+                            
+                   
+
                     }
                 }
 

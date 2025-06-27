@@ -1,0 +1,131 @@
+﻿@model VideoLibrary.Models.AdminStatisticsViewModel
+
+@{
+    ViewData["Title"] = "Video Library Statistics";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index")">Admin</a></li>
+        <li class="breadcrumb-item active">Statistics</li>
+    </ol>
+</nav>
+
+<h1>Video Library Statistics</h1>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Library Totals</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <p><strong>Total File Size:</strong><br>@Model.TotalFileSizeFormatted</p>
+                    </div>
+                    <div class="col-6">
+                        <p><strong>Total Duration:</strong><br>@Model.TotalDurationFormatted</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Processing Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <p><strong>Missing Thumbnails:</strong><br>@Model.VideosNeedingThumbnails videos</p>
+                    </div>
+                    <div class="col-6">
+                        <p><strong>Missing Analysis:</strong><br>@Model.VideosNeedingAnalysis videos</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Video Codecs -->
+@if (Model.VideosByCodec.Any())
+{
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Videos by Codec</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Codec</th>
+                                    <th>Count</th>
+                                    <th>Percentage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var totalCodecVideos = Model.VideosByCodec.Sum(x => x.Count);
+                                }
+                                @foreach (var codec in Model.VideosByCodec)
+                                {
+                                    var percentage = totalCodecVideos > 0 ? (double)codec.Count / totalCodecVideos * 100 : 0;
+                                    <tr>
+                                        <td><code>@codec.Codec</code></td>
+                                        <td>@codec.Count</td>
+                                        <td>@percentage.ToString("F1")%</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Resolutions -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Videos by Resolution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Resolution</th>
+                                    <th>Count</th>
+                                    <th>Percentage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var totalResolutionVideos = Model.VideosByResolution.Sum(x => x.Count);
+                                }
+                                @foreach (var resolution in Model.VideosByResolution)
+                                {
+                                    var percentage = totalResolutionVideos > 0 ? (double)resolution.Count / totalResolutionVideos * 100 : 0;
+                                    <tr>
+                                        <td>@resolution.Resolution</td>
+                                        <td>@resolution.Count</td>
+                                        <td>@percentage.ToString("F1")%</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<a href="@Url.Action("Index")" class="btn btn-secondary">Back to Dashboard</a>

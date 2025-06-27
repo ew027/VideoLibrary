@@ -1,0 +1,448 @@
+﻿@model VideoLibrary.Models.PlaylistViewModel
+
+@{
+    ViewData["Title"] = $"Playlist: {Model.TagName}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Tags</a></li>
+        @if (Model.TagId.HasValue)
+        {
+            <li class="breadcrumb-item"><a href="@Url.Action("ByTag", "Video", new { tagId = Model.TagId })">@Model.TagName</a></li>
+        }
+        <li class="breadcrumb-item active">Playlist</li>
+    </ol>
+</nav>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>@Model.TagName</h1>
+    <div class="playlist-info">
+        <span class="badge bg-secondary">
+            Video <span id="currentVideoNumber">@(Model.CurrentIndex + 1)</span> of @Model.Videos.Count
+        </span>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Main Video Player -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="ratio ratio-16x9">
+                    <video id="mainVideo" controls class="rounded-top" preload="metadata">
+                        @if (Model.CurrentVideo != null)
+                        {
+                            <source src="@Url.Action("Stream", "Video", new { id = Model.CurrentVideo.Id })" type="video/mp4">
+                        }
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+
+                <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 id="currentVideoTitle">@Model.CurrentVideo?.Title</h5>
+                            <div class="text-muted">
+                                <small id="currentVideoInfo">
+                                    @Model.CurrentVideo?.DurationFormatted |
+                                    @Model.CurrentVideo?.ResolutionFormatted |
+                                    @Model.CurrentVideo?.FileSizeFormatted
+                                </small>
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <a id="editVideoBtn" href="@Url.Action("Edit", "Video", new { id = Model.CurrentVideo?.Id })"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                            <a id="viewVideoBtn" href="@Url.Action("Details", "Video", new { id = Model.CurrentVideo?.Id })"
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Playlist Controls -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="btn-group" role="group">
+                            <button id="prevBtn" class="btn btn-outline-secondary"
+                            @(!Model.HasPrevious ? "disabled" : "")>
+                                <i class="bi bi-skip-backward"></i> Previous
+                            </button>
+                            <button id="playPauseBtn" class="btn btn-primary">
+                                <i class="bi bi-play"></i> Play
+                            </button>
+                            <button id="nextBtn" class="btn btn-outline-secondary"
+                            @(!Model.HasNext ? "disabled" : "")>
+                                <i class="bi bi-skip-forward"></i> Next
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoplaySwitch" checked>
+                            <label class="form-check-label" for="autoplaySwitch">
+                                Autoplay next video
+                            </label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="shuffleSwitch">
+                            <label class="form-check-label" for="shuffleSwitch">
+                                Shuffle playlist
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Playlist Sidebar -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Playlist Queue</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="playlist-container" style="max-height: 600px; overflow-y: auto;">
+                    @for (int i = 0; i < Model.Videos.Count; i++)
+                    {
+                        var video = Model.Videos[i];
+                        var isActive = i == Model.CurrentIndex;
+
+                        <div class="playlist-item @(isActive ? "active" : "")" data-video-index="@i" data-video-id="@video.Id">
+                            <div class="d-flex p-2 @(isActive ? "bg-primary text-white" : "")">
+                                <div class="flex-shrink-0 position-relative">
+                                    @if (!string.IsNullOrEmpty(video.ThumbnailPath))
+                                    {
+                                        <img src="@Url.Action("SmallThumbnail", "Video", new { id = video.Id })"
+                                             class="rounded" style="width: 60px; height: 40px; object-fit: cover;" alt="Thumbnail">
+                                    }
+                                    else
+                                    {
+                                        <div class="bg-light border rounded d-flex align-items-center justify-content-center"
+                                             style="width: 60px; height: 40px;">
+                                            <i class="bi bi-film text-muted"></i>
+                                        </div>
+                                    }
+                                    @if (isActive)
+                                    {
+                                        <div class="position-absolute top-50 start-50 translate-middle">
+                                            <i class="bi bi-play-fill text-white" style="font-size: 1.5rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);"></i>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="flex-grow-1 ms-2">
+                                    <div class="playlist-title" style="font-size: 0.9rem; line-height: 1.2;">
+                                        @video.Title
+                                    </div>
+                                    <small class="@(isActive ? "text-white-50" : "text-muted")">
+                                        @video.DurationFormatted
+                                    </small>
+                                    @if (isActive)
+                                    {
+                                        <div class="mt-1">
+                                            <small class="badge bg-light text-dark">Now Playing</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    class VideoPlaylist {
+        constructor() {
+            this.videos = @Html.Raw(Json.Serialize(Model.Videos.Select((v, i) => new
+        {
+            id = v.Id,
+            title = v.Title,
+            index = i,
+            duration = v.DurationFormatted,
+            resolution = v.ResolutionFormatted,
+            fileSize = v.FileSizeFormatted,
+            streamUrl = Url.Action("Stream", "Video", new { id = v.Id }),
+            editUrl = Url.Action("Edit", "Video", new { id = v.Id }),
+            viewUrl = Url.Action("Details", "Video", new { id = v.Id })
+        })));
+
+            this.currentIndex = @Model.CurrentIndex;
+            this.originalOrder = [...this.videos];
+            this.shuffled = false;
+            //this.autoplay = true;
+
+            this.initializeElements();
+            this.bindEvents();
+            this.updateUI();
+        }
+
+        initializeElements() {
+            this.video = document.getElementById('mainVideo');
+            this.playPauseBtn = document.getElementById('playPauseBtn');
+            this.prevBtn = document.getElementById('prevBtn');
+            this.nextBtn = document.getElementById('nextBtn');
+            this.autoplaySwitch = document.getElementById('autoplaySwitch');
+            this.shuffleSwitch = document.getElementById('shuffleSwitch');
+            this.currentVideoNumber = document.getElementById('currentVideoNumber');
+            this.currentVideoTitle = document.getElementById('currentVideoTitle');
+            this.currentVideoInfo = document.getElementById('currentVideoInfo');
+            this.editVideoBtn = document.getElementById('editVideoBtn');
+            this.viewVideoBtn = document.getElementById('viewVideoBtn');
+        }
+
+        bindEvents() {
+            // Video events
+            this.video.addEventListener('ended', () => {
+                if (this.autoplaySwitch.checked && this.hasNext()) {
+                    this.next();
+                }
+            });
+
+            this.video.addEventListener('play', () => {
+                this.playPauseBtn.innerHTML = '<i class="bi bi-pause"></i> Pause';
+            });
+
+            this.video.addEventListener('pause', () => {
+                this.playPauseBtn.innerHTML = '<i class="bi bi-play"></i> Play';
+            });
+
+            // Control events
+            this.playPauseBtn.addEventListener('click', () => {
+                if (this.video.paused) {
+                    this.video.play();
+                } else {
+                    this.video.pause();
+                }
+            });
+
+            this.prevBtn.addEventListener('click', () => this.previous());
+            this.nextBtn.addEventListener('click', () => this.next());
+
+            // Shuffle switch
+            this.shuffleSwitch.addEventListener('change', () => {
+                this.toggleShuffle();
+            });
+
+            // Playlist item clicks
+            document.querySelectorAll('.playlist-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const index = parseInt(item.dataset.videoIndex);
+                    this.jumpToVideo(index);
+                });
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+
+                switch(e.key) {
+                    case ' ':
+                        e.preventDefault();
+                        this.playPauseBtn.click();
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        this.previous();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        this.next();
+                        break;
+                }
+            });
+        }
+
+        loadVideo(index) {
+            if (index < 0 || index >= this.videos.length) return;
+
+            this.currentIndex = index;
+            const video = this.videos[index];
+
+            this.video.src = video.streamUrl;
+            this.video.load();
+            this.video.play();
+
+            this.updateUI();
+        }
+
+        updateUI() {
+            const video = this.videos[this.currentIndex];
+
+            this.currentVideoNumber.textContent = this.currentIndex + 1;
+            this.currentVideoTitle.textContent = video.title;
+            this.currentVideoInfo.textContent = `${video.duration} | ${video.resolution} | ${video.fileSize}`;
+
+            this.editVideoBtn.href = video.editUrl;
+            this.viewVideoBtn.href = video.viewUrl;
+
+            this.prevBtn.disabled = !this.hasPrevious();
+            this.nextBtn.disabled = !this.hasNext();
+
+            document.querySelectorAll('.playlist-item').forEach((item, index) => {
+                item.classList.toggle('active', index === this.currentIndex);
+                const content = item.querySelector('.d-flex');
+                if (index === this.currentIndex) {
+                    content.classList.add('bg-primary', 'text-white');
+                } else {
+                    content.classList.remove('bg-primary', 'text-white');
+                }
+            });
+
+            const activeItem = document.querySelector('.playlist-item.active');
+            if (activeItem) {
+                activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        hasNext() { return this.currentIndex < this.videos.length - 1; }
+        hasPrevious() { return this.currentIndex > 0; }
+        next() { if (this.hasNext()) this.loadVideo(this.currentIndex + 1); }
+        previous() { if (this.hasPrevious()) this.loadVideo(this.currentIndex - 1); }
+        jumpToVideo(index) { this.loadVideo(index); }
+
+        toggleShuffle() {
+            if (this.shuffleSwitch.checked && !this.shuffled) {
+                const currentVideo = this.videos[this.currentIndex];
+
+                for (let i = this.videos.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.videos[i], this.videos[j]] = [this.videos[j], this.videos[i]];
+                }
+
+                this.currentIndex = this.videos.findIndex(v => v.id === currentVideo.id);
+                this.shuffled = true;
+
+            } else if (!this.shuffleSwitch.checked && this.shuffled) {
+                const currentVideo = this.videos[this.currentIndex];
+                this.videos = [...this.originalOrder];
+                this.currentIndex = this.videos.findIndex(v => v.id === currentVideo.id);
+                this.shuffled = false;
+            }
+
+            this.updatePlaylistDOM();
+            this.updateUI();
+        }
+
+        updatePlaylistDOM() {
+            const container = document.querySelector('.playlist-container');
+            container.innerHTML = '';
+
+            this.videos.forEach((video, index) => {
+                const isActive = index === this.currentIndex;
+                const item = document.createElement('div');
+                item.className = `playlist-item ${isActive ? 'active' : ''}`;
+                item.dataset.videoIndex = index;
+                item.dataset.videoId = video.id;
+
+                item.innerHTML = `
+                    <div class="d-flex p-2 ${isActive ? 'bg-primary text-white' : ''}">
+                        <div class="flex-shrink-0 position-relative">
+                            <div class="bg-light border rounded d-flex align-items-center justify-content-center"
+                                 style="width: 60px; height: 40px;">
+                                <i class="bi bi-film text-muted"></i>
+                            </div>
+                            ${isActive ? '<div class="position-absolute top-50 start-50 translate-middle"><i class="bi bi-play-fill text-white" style="font-size: 1.5rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);"></i></div>' : ''}
+                        </div>
+                        <div class="flex-grow-1 ms-2">
+                            <div class="playlist-title" style="font-size: 0.9rem; line-height: 1.2;">
+                                ${video.title}
+                            </div>
+                            <small class="${isActive ? 'text-white-50' : 'text-muted'}">
+                                ${video.duration}
+                            </small>
+                            ${isActive ? '<div class="mt-1"><small class="badge bg-light text-dark">Now Playing</small></div>' : ''}
+                        </div>
+                    </div>
+                `;
+
+                item.addEventListener('click', () => this.jumpToVideo(index));
+                container.appendChild(item);
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        window.playlist = new VideoPlaylist();
+    });
+</script>
+
+<style>
+    .playlist-item {
+        cursor: pointer;
+        border-bottom: 1px solid #dee2e6;
+        transition: background-color 0.2s;
+    }
+
+        .playlist-item:hover:not(.active) {
+            background-color: #f8f9fa;
+        }
+
+        .playlist-item.active {
+            background-color: transparent;
+        }
+
+        .playlist-item:last-child {
+            border-bottom: none;
+        }
+
+    .playlist-title {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .playlist-container {
+        scrollbar-width: thin;
+        scrollbar-color: #6c757d #f8f9fa;
+    }
+
+        .playlist-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .playlist-container::-webkit-scrollbar-track {
+            background: #f8f9fa;
+            border-radius: 3px;
+        }
+
+        .playlist-container::-webkit-scrollbar-thumb {
+            background: #6c757d;
+            border-radius: 3px;
+        }
+
+            .playlist-container::-webkit-scrollbar-thumb:hover {
+                background: #495057;
+            }
+
+    .video-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+        .video-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+
+</style>

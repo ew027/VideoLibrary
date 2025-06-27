@@ -1,0 +1,232 @@
+﻿@model VideoLibrary.Models.DatabaseQueryViewModel
+
+@{
+    ViewData["Title"] = "Database Query Tool";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Admin")">Admin</a></li>
+        <li class="breadcrumb-item active">Database Query</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-database"></i> Database Query Tool</h1>
+    <div class="text-muted">
+        <small><i class="bi bi-info-circle"></i> Execute SQL queries against the video library database</small>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle"></i> @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle"></i> @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row">
+    <!-- Query Input -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">SQL Query</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="ExecuteQuery" method="post">
+                    <div class="mb-3">
+                        <label asp-for="Query" class="form-label">Enter your SQL query:</label>
+                        <textarea asp-for="Query" class="form-control font-monospace" rows="8"
+                                  placeholder="SELECT * FROM Videos LIMIT 10;"></textarea>
+                        <span asp-validation-for="Query" class="text-danger"></span>
+                        <div class="form-text">
+                            <strong>Supported commands:</strong> SELECT, INSERT, UPDATE, DELETE<br>
+                            <strong>Available tables:</strong> Videos, Tags, VideoTags
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-play-circle"></i> Execute Query
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearQuery()">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                        <button type="button" class="btn btn-outline-info" onclick="formatQuery()">
+                            <i class="bi bi-code"></i> Format
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Query Results -->
+        @if (Model.QueryResults != null)
+        {
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Query Results</h5>
+                    <span class="badge bg-secondary">@Model.QueryResults.RowCount row(s)</span>
+                </div>
+                <div class="card-body">
+                    @if (Model.QueryResults.Rows.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover table-sm">
+                                <thead class="table-dark">
+                                    <tr>
+                                        @foreach (var column in Model.QueryResults.Columns)
+                                        {
+                                            <th>@column</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.QueryResults.Rows)
+                                    {
+                                        <tr>
+                                            @foreach (var column in Model.QueryResults.Columns)
+                                            {
+                                                <td>
+                                                    @if (row[column] == null)
+                                                    {
+                                                        <span class="text-muted font-italic">NULL</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>@row[column]</span>
+                                                    }
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox"></i>
+                            <p>No results returned</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Predefined Queries Sidebar -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Predefined Queries</h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    @foreach (var predefinedQuery in Model.PredefinedQueries)
+                    {
+                        <div class="list-group-item list-group-item-action p-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">@predefinedQuery.Name</h6>
+                                    <small class="text-muted font-monospace">@predefinedQuery.Query.Substring(0, Math.Min(50, predefinedQuery.Query.Length))@(predefinedQuery.Query.Length > 50 ? "..." : "")</small>
+                                </div>
+                                <form asp-action="LoadPredefinedQuery" method="post" class="d-inline">
+                                    <input type="hidden" name="query" value="@predefinedQuery.Query" />
+                                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-arrow-right"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Query Tips -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Quick Tips</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled small">
+                    <li><i class="bi bi-lightbulb text-warning"></i> Use <code>LIMIT</code> for large result sets</li>
+                    <li><i class="bi bi-lightbulb text-warning"></i> Check table schema with <code>PRAGMA table_info(TableName)</code></li>
+                    <li><i class="bi bi-lightbulb text-warning"></i> Use <code>sqlite_master</code> to explore database structure</li>
+                    <li><i class="bi bi-shield-exclamation text-danger"></i> Be careful with UPDATE/DELETE queries</li>
+                    <li><i class="bi bi-info-circle text-info"></i> SQLite syntax reference available online</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function clearQuery() {
+        document.getElementById('Query').value = '';
+    }
+
+    function formatQuery() {
+        const textarea = document.getElementById('Query');
+        let query = textarea.value;
+
+        // Basic SQL formatting
+        query = query
+            .replace(/\bSELECT\b/gi, 'SELECT')
+            .replace(/\bFROM\b/gi, '\nFROM')
+            .replace(/\bWHERE\b/gi, '\nWHERE')
+            .replace(/\bORDER BY\b/gi, '\nORDER BY')
+            .replace(/\bGROUP BY\b/gi, '\nGROUP BY')
+            .replace(/\bHAVING\b/gi, '\nHAVING')
+            .replace(/\bJOIN\b/gi, '\nJOIN')
+            .replace(/\bLEFT JOIN\b/gi, '\nLEFT JOIN')
+            .replace(/\bINNER JOIN\b/gi, '\nINNER JOIN')
+            .replace(/\bUNION\b/gi, '\nUNION')
+            .replace(/\bINSERT\b/gi, 'INSERT')
+            .replace(/\bUPDATE\b/gi, 'UPDATE')
+            .replace(/\bDELETE\b/gi, 'DELETE')
+            .replace(/\bSET\b/gi, '\nSET');
+
+        textarea.value = query;
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            document.querySelector('form').submit();
+        }
+    });
+</script>
+
+<style>
+    .font-monospace {
+        font-family: 'Courier New', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .table th {
+        white-space: nowrap;
+    }
+
+    .table td {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .list-group-item-action:hover {
+        background-color: #f8f9fa;
+    }
+</style>

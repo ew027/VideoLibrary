@@ -2,15 +2,25 @@ using Microsoft.EntityFrameworkCore;
 using VideoLibrary.Models;
 using VideoLibrary.Services;
 using System.Runtime.InteropServices;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using FFMpegCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure logging for systemd
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
+
+// Add systemd integration
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 {
     builder.Logging.AddSystemdConsole();
+    builder.Services.AddSystemd();
+}
+else
+{
+    GlobalFFOptions.Configure(options => options.BinaryFolder = "C:\\Utils\\ffmpeg\\bin");
 }
 
 // Load configuration from /etc/videolibrary/ on Linux
@@ -18,6 +28,22 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 {
     builder.Configuration.AddJsonFile("/etc/videolibrary/appsettings.Production.json", optional: true, reloadOnChange: true);
 }
+
+// Configure authentication settings
+builder.Services.Configure<AuthConfig>(builder.Configuration.GetSection("Authentication"));
+
+// Configure authentication
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Auth/Login";
+        options.LogoutPath = "/Auth/Logout";
+        options.AccessDeniedPath = "/Auth/Login";
+        options.ExpireTimeSpan = TimeSpan.FromHours(1);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    });
 
 // Configure Kestrel for production
 builder.WebHost.ConfigureKestrel(options =>
@@ -31,12 +57,25 @@ builder.Services.AddControllersWithViews();
 
 // Add Entity Framework
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+
+    // Disable verbose logging in production
+    if (builder.Environment.IsProduction())
+    {
+        options.EnableSensitiveDataLogging(false);
+        options.EnableDetailedErrors(false);
+    }
+});
 
 // Add background services
-builder.Services.AddHostedService<VideoScanService>();
-builder.Services.AddSingleton<ThumbnailService>();
-builder.Services.AddHostedService<ThumbnailService>(provider => provider.GetService<ThumbnailService>()!);
+//builder.Services.AddHostedService<VideoScanService>();
+builder.Services.AddScoped<ThumbnailService>();
+builder.Services.AddScoped<VideoAnalysisService>();
+builder.Services.AddScoped<VideoScanService>();
+builder.Services.AddScoped<VideoClippingService>();
+
+//builder.Services.AddHostedService<ThumbnailService>(provider => provider.GetService<ThumbnailService>()!);
 
 var app = builder.Build();
 
@@ -53,27 +92,34 @@ if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("Data S
 }
 
 // Create database if it doesn't exist
-using (var scope = app.Services.CreateScope())
+try
 {
+    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     context.Database.EnsureCreated();
+
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Database initialized successfully");
+
+    // Add video metadata columns if they don't exist
+    await AddVideoMetadataColumnsIfNeeded(context);
+    await AddVideoNotesColumnIfNeeded(context);
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while initializing the database");
+    throw;
 }
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // Remove HSTS for reverse proxy scenarios
-    // app.UseHsts();
 }
 
-// Remove HTTPS redirection for reverse proxy scenarios
-// app.UseHttpsRedirection();
-
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseAuthorization();
 
 app.MapControllerRoute(
@@ -81,6 +127,62 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 // Add health check endpoint
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "healthy",
+    timestamp = DateTime.UtcNow,
+    environment = app.Environment.EnvironmentName
+}));
+
+// Log startup completion
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Video Library application started successfully");
+});
 
 app.Run();
+
+static async Task AddVideoMetadataColumnsIfNeeded(AppDbContext context)
+{
+    try
+    {
+        // Try to query a new column - if it fails, we need to add the columns
+        await context.Database.ExecuteSqlRawAsync("SELECT FileSizeBytes FROM Videos LIMIT 1");
+    }
+    catch
+    {
+        // Columns don't exist, add them
+        await context.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE Videos ADD COLUMN FileSizeBytes INTEGER;
+            ALTER TABLE Videos ADD COLUMN Width INTEGER;
+            ALTER TABLE Videos ADD COLUMN Height INTEGER;
+            ALTER TABLE Videos ADD COLUMN DurationSeconds REAL;
+            ALTER TABLE Videos ADD COLUMN VideoCodec TEXT;
+            ALTER TABLE Videos ADD COLUMN AudioCodec TEXT;
+            ALTER TABLE Videos ADD COLUMN BitRate INTEGER;
+        ");
+
+        var logger = context.GetService<ILogger<Program>>();
+        logger?.LogInformation("Added video metadata columns to existing database");
+    }
+}
+
+static async Task AddVideoNotesColumnIfNeeded(AppDbContext context)
+{
+    try
+    {
+        // Try to query a new column - if it fails, we need to add the columns
+        await context.Database.ExecuteSqlRawAsync("SELECT Notes FROM Videos LIMIT 1");
+    }
+    catch
+    {
+        // Columns don't exist, add them
+        await context.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE Videos ADD COLUMN Notes TEXT;
+        ");
+
+        var logger = context.GetService<ILogger<Program>>();
+        logger?.LogInformation("Added video notes column to existing database");
+    }
+}
