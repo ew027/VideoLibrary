@@ -11,6 +11,8 @@ namespace VideoLibrary.Models
         public DbSet<Video> Videos { get; set; }
         public DbSet<Tag> Tags { get; set; }
         public DbSet<VideoTag> VideoTags { get; set; }
+        public DbSet<Gallery> Galleries { get; set; }
+        public DbSet<GalleryTag> GalleryTags { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -26,6 +28,20 @@ namespace VideoLibrary.Models
                 .HasOne(vt => vt.Tag)
                 .WithMany(t => t.VideoTags)
                 .HasForeignKey(vt => vt.TagId);
+
+            // Gallery-Tag relationship
+            modelBuilder.Entity<GalleryTag>()
+                .HasKey(gt => new { gt.GalleryId, gt.TagId });
+
+            modelBuilder.Entity<GalleryTag>()
+                .HasOne(gt => gt.Gallery)
+                .WithMany(g => g.GalleryTags)
+                .HasForeignKey(gt => gt.GalleryId);
+
+            modelBuilder.Entity<GalleryTag>()
+                .HasOne(gt => gt.Tag)
+                .WithMany(g => g.GalleryTags)
+                .HasForeignKey(gt => gt.TagId);
         }
     }
 }

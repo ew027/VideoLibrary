@@ -67,7 +67,7 @@
             <div class="card video-card">
                 @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
                 {
-                    <img src="@Url.Action("SmallThumbnail", "Video", new { id = tag.VideoTags.FirstOrDefault()?.VideoId })"
+                    <img src="@Url.Action("SmallThumbnail", "Home", new { id = tag.Id })"
                          class="card-img-top video-thumbnail" alt="@tag.Name">
                 }
                 else
@@ -78,8 +78,7 @@
                 }
                 <div class="card-body">
                     <h5 class="card-title">@tag.Name</h5>
-                    <p class="card-text">@tag.VideoTags.Count video@(tag.VideoTags.Count == 1 ? "" : "s")</p>
-                    
+                    <p class="card-text">@tag.VideoTags.Count video@(tag.VideoTags.Count == 1 ? "" : "s"), @tag.GalleryTags.Count @(tag.GalleryTags.Count == 1 ? "gallery" : "galleries")</p>
                 </div>
             </div>
             </a>

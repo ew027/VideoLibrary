@@ -1,0 +1,147 @@
+﻿@model VideoLibrary.Models.GalleryDetailViewModel
+
+@{
+    ViewData["Title"] = $"{Model.Gallery.Name} - Image {Model.CurrentImageIndex + 1}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Tags</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Details", "Gallery", new { id = Model.Gallery.Id })">@Model.Gallery.Name</a></li>
+        <li class="breadcrumb-item active">Image @(Model.CurrentImageIndex + 1)</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-9">
+        <div class="text-center">
+            @if (Model.CurrentImage != null)
+            {
+                <img src="@Url.Action("Medium", "Gallery", new { galleryId = Model.Gallery.Id, fileName = Model.CurrentImage.FileName })"
+                     class="img-fluid rounded mb-3" alt="@Model.CurrentImage.FileName" id="mainImage">
+            }
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                @if (Model.HasPrevious)
+                {
+                    <a href="@Url.Action("Image", "Gallery", new { galleryId = Model.Gallery.Id, imageIndex = Model.CurrentImageIndex - 1 })"
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Previous
+                    </a>
+                }
+                else
+                {
+                    <button class="btn btn-outline-secondary" disabled>
+                        <i class="bi bi-arrow-left"></i> Previous
+                    </button>
+                }
+            </div>
+
+            <span class="badge bg-secondary">
+                Image @(Model.CurrentImageIndex + 1) of @Model.Images.Count
+            </span>
+
+            <div>
+                @if (Model.HasNext)
+                {
+                    <a href="@Url.Action("Image", "Gallery", new { galleryId = Model.Gallery.Id, imageIndex = Model.CurrentImageIndex + 1 })"
+                       class="btn btn-outline-secondary">
+                        Next <i class="bi bi-arrow-right"></i>
+                    </a>
+                }
+                else
+                {
+                    <button class="btn btn-outline-secondary" disabled>
+                        Next <i class="bi bi-arrow-right"></i>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Image Details</h6>
+            </div>
+            <div class="card-body">
+                @if (Model.CurrentImage != null)
+                {
+                    <p><strong>Filename:</strong><br>@Model.CurrentImage.FileName</p>
+                    <p><strong>File Size:</strong><br>@((Model.CurrentImage.FileSize / 1024.0 / 1024.0).ToString("F2")) MB</p>
+                    <p><strong>Modified:</strong><br>@Model.CurrentImage.LastModified.ToString("MMM dd, yyyy")</p>
+                }
+
+                <div class="d-grid gap-2">
+                    <a href="@Url.Action("Full", "Gallery", new { galleryId = Model.Gallery.Id, fileName = Model.CurrentImage!.FileName })"
+                       class="btn btn-primary btn-sm" target="_blank">
+                        <i class="bi bi-arrows-fullscreen"></i> View Full Size
+                    </a>
+                    <a href="@Url.Action("Details", "Gallery", new { id = Model.Gallery.Id })"
+                       class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-grid"></i> Back to Gallery
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Gallery.GalleryTags.Any())
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Gallery Tags</h6>
+                </div>
+                <div class="card-body">
+                    @foreach (var galleryTag in Model.Gallery.GalleryTags)
+                    {
+                        <a href="@Url.Action("ByTag", "Video", new { tagId = galleryTag.Tag.Id })"
+                           class="badge bg-primary tag-badge me-1 mb-1">@galleryTag.Tag.Name</a>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+       switch(e.key) {
+           case 'ArrowLeft':
+               e.preventDefault();
+    @if (Model.HasPrevious)
+    {
+        <text>
+                       window.location.href = '@Url.Action("Image", "Gallery", new { galleryId = Model.Gallery.Id, imageIndex = Model.CurrentImageIndex - 1 })';
+        </text>
+    }
+               break;
+           case 'ArrowRight':
+               e.preventDefault();
+    @if (Model.HasNext)
+    {
+        <text>
+                       window.location.href = '@Url.Action("Image", "Gallery", new { galleryId = Model.Gallery.Id, imageIndex = Model.CurrentImageIndex + 1 })';
+        </text>
+    }
+               break;
+           case 'Escape':
+               e.preventDefault();
+               window.location.href = '@Url.Action("Details", "Gallery", new { id = Model.Gallery.Id })';
+               break;
+       }
+    });
+</script>
+
+<style>
+    .tag-badge {
+        text-decoration: none;
+    }
+
+    #mainImage {
+        max-height: 80vh;
+        cursor: pointer;
+    }
+</style>

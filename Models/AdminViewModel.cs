@@ -8,12 +8,18 @@
         public int TotalTags { get; set; }
         public int TagsWithThumbnails { get; set; }
 
+        // Add these new properties
+        public int TotalGalleries { get; set; }
+        public int GalleriesWithTags { get; set; }
+
         public int VideosWithoutThumbnails => TotalVideos - VideosWithThumbnails;
         public int VideosWithoutAnalysis => TotalVideos - VideosWithAnalysis;
         public int TagsWithoutThumbnails => TotalTags - TagsWithThumbnails;
+        public int GalleriesWithoutTags => TotalGalleries - GalleriesWithTags;
 
         public double ThumbnailProgress => TotalVideos > 0 ? (double)VideosWithThumbnails / TotalVideos * 100 : 0;
         public double AnalysisProgress => TotalVideos > 0 ? (double)VideosWithAnalysis / TotalVideos * 100 : 0;
+        public double GalleryTagProgress => TotalGalleries > 0 ? (double)GalleriesWithTags / TotalGalleries * 100 : 0;
     }
 
     public class AdminStatisticsViewModel

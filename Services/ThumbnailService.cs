@@ -61,9 +61,8 @@ namespace VideoLibrary.Services
                 foreach (var video in videosWithoutThumbnails)
                 {
                     await GenerateVideoThumbnail(video, thumbnailFolderPath, ffmpegPath, ThumbnailMode.New);
+                    await dbContext.SaveChangesAsync();
                 }
-
-                await dbContext.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -162,6 +161,7 @@ namespace VideoLibrary.Services
                 if (string.IsNullOrEmpty(thumbnailFolderPath) || string.IsNullOrEmpty(ffmpegPath)) return;
 
                 await GenerateVideoThumbnail(video, thumbnailFolderPath, ffmpegPath, ThumbnailMode.Recreate, seconds);
+                await dbContext.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -178,7 +178,9 @@ namespace VideoLibrary.Services
             var fileNameWithoutExt = Path.GetFileNameWithoutExtension(thumbnailPath);
             var extension = Path.GetExtension(thumbnailPath);
 
-            return Path.Combine(directory!, $"{fileNameWithoutExt}_small{extension}");
+            var smallThumb = Path.Combine(directory!, $"{fileNameWithoutExt}_small{extension}");
+
+            return File.Exists(smallThumb) ? smallThumb : thumbnailPath;
         }
 
         private async Task GenerateSmallThumbnail(string sourcePath, string destinationPath)
@@ -227,6 +229,19 @@ namespace VideoLibrary.Services
                     if (firstVideoWithThumbnail != null)
                     {
                         tag.ThumbnailPath = firstVideoWithThumbnail.ThumbnailPath;
+                    }
+                    else
+                    {
+                        // check to see if we can get a thumbnail from a gallery instead
+                        var galleryTag = await dbContext.GalleryTags
+                            .Where(gt => gt.TagId == tag.Id)
+                            .Include(gt => gt.Gallery)
+                            .FirstOrDefaultAsync();
+
+                        if (galleryTag != null && !string.IsNullOrEmpty(galleryTag.Gallery!.ThumbnailPath))
+                        {
+                            tag.ThumbnailPath = galleryTag.Gallery.ThumbnailPath;
+                        }
                     }
                 }
 

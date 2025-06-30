@@ -12,12 +12,14 @@ namespace VideoLibrary.Controllers
         private readonly AppDbContext _context;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<AdminController> _logger;
+        private readonly GalleryService _galleryService;
 
-        public AdminController(AppDbContext context, IServiceProvider serviceProvider, ILogger<AdminController> logger)
+        public AdminController(AppDbContext context, IServiceProvider serviceProvider, ILogger<AdminController> logger, GalleryService galleryService)
         {
             _context = context;
             _serviceProvider = serviceProvider;
             _logger = logger;
+            _galleryService = galleryService;
         }
 
         public async Task<IActionResult> Index()
@@ -28,7 +30,9 @@ namespace VideoLibrary.Controllers
                 VideosWithThumbnails = await _context.Videos.CountAsync(v => !string.IsNullOrEmpty(v.ThumbnailPath)),
                 VideosWithAnalysis = await _context.Videos.CountAsync(v => v.DurationSeconds.HasValue),
                 TotalTags = await _context.Tags.CountAsync(),
-                TagsWithThumbnails = await _context.Tags.CountAsync(t => !string.IsNullOrEmpty(t.ThumbnailPath))
+                TagsWithThumbnails = await _context.Tags.CountAsync(t => !string.IsNullOrEmpty(t.ThumbnailPath)),
+                TotalGalleries = await _context.Galleries.CountAsync(),
+                GalleriesWithTags = await _context.Galleries.CountAsync(g => g.GalleryTags.Any())
             };
 
             return View(stats);
@@ -212,6 +216,48 @@ namespace VideoLibrary.Controllers
             };
 
             return View(stats);
+        }
+
+        [HttpPost]
+        public IActionResult ScanGalleries()
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _galleryService.ScanForNewGalleriesAsync();
+                    _logger.LogInformation("Manual gallery scan completed");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during manual gallery scan");
+                }
+            });
+
+            TempData["SuccessMessage"] = "Gallery scan started in the background";
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public IActionResult ClearGalleryCache()
+        {
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var galleryService = scope.ServiceProvider.GetRequiredService<GalleryService>();
+                    galleryService.ClearCache();
+                    _logger.LogInformation("Gallery cache cleared");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error clearing gallery cache");
+                }
+            });
+
+            TempData["SuccessMessage"] = "Gallery cache cleared";
+            return RedirectToAction(nameof(Index));
         }
     }
 }

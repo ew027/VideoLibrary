@@ -74,7 +74,7 @@ builder.Services.AddScoped<ThumbnailService>();
 builder.Services.AddScoped<VideoAnalysisService>();
 builder.Services.AddScoped<VideoScanService>();
 builder.Services.AddScoped<VideoClippingService>();
-
+builder.Services.AddSingleton<GalleryService>();
 //builder.Services.AddHostedService<ThumbnailService>(provider => provider.GetService<ThumbnailService>()!);
 
 var app = builder.Build();
@@ -104,6 +104,8 @@ try
     // Add video metadata columns if they don't exist
     await AddVideoMetadataColumnsIfNeeded(context);
     await AddVideoNotesColumnIfNeeded(context);
+    await AddGalleryDbStructure(context);
+    await AddGalleryThumbnailColumn(context);
 }
 catch (Exception ex)
 {
@@ -184,5 +186,63 @@ static async Task AddVideoNotesColumnIfNeeded(AppDbContext context)
 
         var logger = context.GetService<ILogger<Program>>();
         logger?.LogInformation("Added video notes column to existing database");
+    }
+}
+
+static async Task AddGalleryDbStructure(AppDbContext context)
+{
+    // Check if Galleries table exists, if not create gallery structure
+    try
+    {
+        await context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM Galleries LIMIT 1");
+    }
+    catch
+    {
+        // Create gallery tables
+        await context.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE Galleries (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL,
+                FolderPath TEXT NOT NULL,
+                ThumbnailPath TEXT NOT NULL,
+                ImageCount INTEGER,
+                Description TEXT,
+                DateAdded DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE GalleryTags (
+                GalleryId INTEGER NOT NULL,
+                TagId INTEGER NOT NULL,
+                PRIMARY KEY (GalleryId, TagId),
+                FOREIGN KEY (GalleryId) REFERENCES Galleries(Id) ON DELETE CASCADE,
+                FOREIGN KEY (TagId) REFERENCES Tags(Id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IX_GalleryTags_GalleryId ON GalleryTags(GalleryId);
+            CREATE INDEX IX_GalleryTags_TagId ON GalleryTags(TagId);
+            CREATE INDEX IX_Galleries_FolderPath ON Galleries(FolderPath);
+        ");
+
+        var logger = context.GetService<ILogger<Program>>();
+        logger?.LogInformation("Added gallery tables to existing database");
+    }
+}
+
+static async Task AddGalleryThumbnailColumn(AppDbContext context)
+{
+    try
+    {
+        // Try to query a new column - if it fails, we need to add the columns
+        await context.Database.ExecuteSqlRawAsync("SELECT ThumbnailPath FROM Galleries LIMIT 1");
+    }
+    catch
+    {
+        // Columns don't exist, add them
+        await context.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE Galleries ADD COLUMN ThumbnailPath TEXT;
+        ");
+
+        var logger = context.GetService<ILogger<Program>>();
+        logger?.LogInformation("Added new gallery columns to existing database");
     }
 }

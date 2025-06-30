@@ -28,7 +28,7 @@ namespace VideoLibrary.Controllers
             _serviceProvider = serviceProvider;
         }
 
-        public async Task<IActionResult> Details(int id)
+        public async Task<IActionResult> Details(int id, int? tagId = null)
         {
             var video = await _context.Videos
                 .Include(v => v.VideoTags)
@@ -40,11 +40,24 @@ namespace VideoLibrary.Controllers
                 return NotFound();
             }
 
-            return View(video);
+            VideoViewModel viewModel = null;
+
+            if (tagId.HasValue && video.VideoTags.Any(x => x.TagId == tagId.Value))
+            {
+                viewModel = new VideoViewModel { Video = video, Tag = video.VideoTags.FirstOrDefault(x => x.TagId == tagId.Value)!.Tag };
+            }
+            else
+            {
+                viewModel = new VideoViewModel { Video = video };
+            }
+
+            return View(viewModel);
         }
 
         public async Task<IActionResult> ByTag(int tagId)
         {
+            var tagViewModel = new TagWithContentViewModel();
+
             var tag = await _context.Tags
                 .Include(t => t.VideoTags)
                 .ThenInclude(vt => vt.Video)
@@ -55,7 +68,25 @@ namespace VideoLibrary.Controllers
                 return NotFound();
             }
 
-            return View(tag);
+            // Get videos for this tag
+            var videos = await _context.Videos
+                .Where(v => v.VideoTags.Any(vt => vt.TagId == tagId))
+                .OrderBy(v => v.Title)
+                .ToListAsync();
+
+            // Get galleries for this tag
+            var galleries = await _context.Galleries
+                .Include(g => g.GalleryTags)
+                .ThenInclude(gt => gt.Tag)
+                .Where(g => g.GalleryTags.Any(gt => gt.TagId == tagId))
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+
+            tagViewModel.Galleries = galleries;
+            tagViewModel.Videos = videos;
+            tagViewModel.Tag = tag;
+
+            return View(tagViewModel);
         }
 
         public async Task<IActionResult> Edit(int id)

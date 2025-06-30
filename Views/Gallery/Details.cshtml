@@ -1,0 +1,83 @@
+﻿@model VideoLibrary.Models.GalleryListViewModel
+
+@{
+    ViewData["Title"] = Model.Gallery.Name;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Tags</a></li>
+        <li class="breadcrumb-item active">@Model.Gallery.Name</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>@Model.Gallery.Name</h1>
+    <div>
+        <span class="badge bg-secondary">@Model.ImageCount image@(Model.ImageCount == 1 ? "" : "s")</span>
+        <a href="@Url.Action("Edit", "Gallery", new { id = Model.Gallery.Id })" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil"></i> Edit Tags
+        </a>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Gallery.Description))
+{
+    <div class="mb-4">
+        <p>@Model.Gallery.Description</p>
+    </div>
+}
+
+@if (Model.Gallery.GalleryTags.Any())
+{
+    <div class="mb-4">
+        <strong>Tags:</strong>
+        @foreach (var galleryTag in Model.Gallery.GalleryTags)
+        {
+            <a href="@Url.Action("ByTag", "Video", new { tagId = galleryTag.Tag.Id })"
+               class="badge bg-primary tag-badge me-1">@galleryTag.Tag.Name</a>
+        }
+    </div>
+}
+
+@if (Model.Images.Any())
+{
+    <div class="row">
+        @foreach (var image in Model.Images)
+        {
+            <div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-3">
+                <a href="@Url.Action("Image", "Gallery", new { galleryId = Model.Gallery.Id, imageIndex = image.Index })"
+                   class="d-block">
+                    <img src="@Url.Action("Thumbnail", "Gallery", new { galleryId = Model.Gallery.Id, fileName = image.FileName })"
+                         class="img-fluid rounded gallery-thumbnail" alt="@image.FileName" loading="lazy">
+                </a>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <h4>No images found</h4>
+        <p>This gallery folder doesn't contain any images yet.</p>
+    </div>
+}
+
+<a href="javascript:history.back()" class="btn btn-secondary">Back</a>
+
+<style>
+    .gallery-thumbnail {
+        aspect-ratio: 1;
+        object-fit: cover;
+        object-position: top;
+        transition: transform 0.2s;
+    }
+
+        .gallery-thumbnail:hover {
+            transform: scale(1.05);
+        }
+
+    .tag-badge {
+        text-decoration: none;
+    }
+</style>
