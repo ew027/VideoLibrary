@@ -92,10 +92,11 @@ namespace VideoLibrary.Controllers
             }
 
             var tag = await _context.Tags.FirstOrDefaultAsync(x => x.Id == tagId);
+            var tagName = (tag is null) ? "Custom playlist" : $"Custom playlist for {tag.Name}";
 
             var playlist = new PlaylistViewModel
             {
-                TagName = $"Custom playlist for {tag!.Name}",
+                TagName = tagName,
                 Videos = videos,
                 CurrentIndex = 0,
                 IsRandom = (order != "order")

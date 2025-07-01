@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 using VideoLibrary.Models;
 using VideoLibrary.Services;
 
@@ -87,6 +88,65 @@ namespace VideoLibrary.Controllers
             tagViewModel.Tag = tag;
 
             return View(tagViewModel);
+        }
+
+        public async Task<IActionResult> ByMultipleTags(string tagIds)
+        {
+            var tagIdList = ParseTagIds(tagIds);
+
+            var tags = await _context.Tags
+                 .Where(t => tagIdList.Contains(t.Id))
+                 .ToListAsync();
+
+            // Get videos that have ANY of the selected tags
+            var videos = await _context.Videos
+                .Where(v => v.VideoTags.Any(vt => tagIdList.Contains(vt.TagId)))
+                .Include(v => v.VideoTags)
+                .ThenInclude(vt => vt.Tag)
+                .OrderBy(v => v.Title)
+                .ToListAsync();
+
+            // Get galleries that have ANY of the selected tags
+            var galleries = await _context.Galleries
+                .Include(g => g.GalleryTags)
+                .ThenInclude(gt => gt.Tag)
+                .Where(g => g.GalleryTags.Any(gt => tagIdList.Contains(gt.TagId)))
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+
+            // Create a virtual tag for display
+            var tagNames = tags.Select(t => t.Name).ToList();
+            var displayName = tagNames.Count > 3
+                ? $"{string.Join(", ", tagNames.Take(3))} + {tagNames.Count - 3} more"
+                : string.Join(", ", tagNames);
+
+            var virtualTag = new Tag
+            {
+                Id = 0,
+                Name = displayName
+            };
+
+            var viewModel = new TagWithContentViewModel
+            {
+                Tag = virtualTag,
+                Videos = videos,
+                Galleries = galleries
+            };
+
+            return View("ByTag", viewModel);
+        }
+
+        private List<int> ParseTagIds(string tagIds)
+        {
+            if (string.IsNullOrWhiteSpace(tagIds))
+                return new List<int>();
+
+            return tagIds.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(id => int.TryParse(id.Trim(), out var parsed) ? parsed : (int?)null)
+                .Where(id => id.HasValue)
+                .Select(id => id.Value)
+                .Distinct()
+                .ToList();
         }
 
         public async Task<IActionResult> Edit(int id)

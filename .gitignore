@@ -404,3 +404,6 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+/videolibrary.db
+/videolibrary.db-shm
+/videolibrary.db-wal
