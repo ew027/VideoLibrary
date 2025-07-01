@@ -17,8 +17,11 @@
         <div class="text-center">
             @if (Model.CurrentImage != null)
             {
+                <a href="@Url.Action("Full", "Gallery", new { galleryId = Model.Gallery.Id, fileName = Model.CurrentImage!.FileName })"
+                       target="_blank">
                 <img src="@Url.Action("Medium", "Gallery", new { galleryId = Model.Gallery.Id, fileName = Model.CurrentImage.FileName })"
                      class="img-fluid rounded mb-3" alt="@Model.CurrentImage.FileName" id="mainImage">
+                </a>
             }
         </div>
 

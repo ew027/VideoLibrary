@@ -39,14 +39,20 @@
         </ul>
     </div>
 </div>
-<strong>
-    <a name="top"></a>
-    @foreach (var letter in startLetters)
-    {
-        <a href="#sw-@letter" style="padding-right: 5px; font-size: 1.2em;">@letter</a>
-    }
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <div>
+        <strong>
+            <a name="top"></a>
+            @foreach (var letter in startLetters)
+            {
+                <a href="#sw-@letter" style="padding-right: 5px; font-size: 1.2em;">@letter</a>
+            }
 
-</strong>
+        </strong>
+    </div>
+    <input type="text" placeholder="Filter tags..." id="txtTagFilter" />
+</div>
+
 <div class="row">
     @foreach (var tag in Model)
     {
@@ -62,7 +68,7 @@
                 letterIndex = 0;
             }
         }
-        <div class="col-md-3 mb-4">
+        <div class="col-md-3 mb-4 outer-card" data-tagname="@tag.Name">
             <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Id })" class="video-link">
             <div class="card video-card">
                 @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
@@ -93,3 +99,25 @@
         <p>Videos are being scanned in the background. Tags will appear here once videos are processed and tagged.</p>
     </div>
 }
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const txtFilterTags = document.getElementById('txtTagFilter');
+
+        txtFilterTags.addEventListener('input', (event) => {
+            const filter = event.target.value.toLowerCase(); // Add toLowerCase for case-insensitive
+            const videoCards = document.querySelectorAll('.outer-card');
+
+            videoCards.forEach(card => {
+                const tagName = card.getAttribute('data-tagname');
+
+                if (tagName && tagName.toLowerCase().includes(filter)) {
+                    card.classList.remove('d-none');
+                } else {
+                    card.classList.add('d-none');
+                }
+            });
+        });
+    });
+
+</script>

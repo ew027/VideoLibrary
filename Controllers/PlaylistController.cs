@@ -75,6 +75,35 @@ namespace VideoLibrary.Controllers
             return View("Tag", playlist);
         }
 
+        public async Task<IActionResult> Custom(int tagId, string videoIds, string order)
+        {
+            // .Where(v => videoIds.Contains(v.Id))
+            var sortOrder = (order == "order") ? "id" : "RANDOM()";
+            var sql = $"select * from Videos where Id in ({videoIds}) order by {sortOrder}";
+
+            var videos = await _context.Videos
+                .FromSqlRaw(sql)
+                .ToListAsync();
+
+            if (!videos.Any())
+            {
+                TempData["ErrorMessage"] = "No videos available for custom playlist.";
+                return RedirectToAction("Index", "Home");
+            }
+
+            var tag = await _context.Tags.FirstOrDefaultAsync(x => x.Id == tagId);
+
+            var playlist = new PlaylistViewModel
+            {
+                TagName = $"Custom playlist for {tag!.Name}",
+                Videos = videos,
+                CurrentIndex = 0,
+                IsRandom = (order != "order")
+            };
+
+            return View("Tag", playlist);
+        }
+
         public async Task<IActionResult> Recent(int? count = null)
         {
             var videoCount = count ?? 20;

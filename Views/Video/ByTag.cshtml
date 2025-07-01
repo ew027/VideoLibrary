@@ -13,26 +13,31 @@
 
 <h1>@Model.Tag.Name videos</h1>
 
-<div class="btn-group">
-    <a href="@Url.Action("Tag", "Playlist", new { tagId = Model.Tag.Id })" class="btn btn-success">
-        <i class="bi bi-play-circle"></i> Play All (@Model.TotalVideos videos)
-    </a>
-    <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
-        <span class="visually-hidden">Toggle Dropdown</span>
-    </button>
-    <ul class="dropdown-menu">
-        <li>
-            <a class="dropdown-item" href="@Url.Action("Tag", "Playlist", new { tagId = Model.Tag.Id })">
-                <i class="bi bi-play-circle"></i> Play in Order
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item" href="@Url.Action("Tag", "Playlist", new { tagId = Model.Tag.Id })?shuffle=true">
-                <i class="bi bi-shuffle"></i> Play Shuffled
-            </a>
-        </li>
-    </ul>
-</div>
+
+    <div class="btn-group">
+        <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown">
+            <i class="bi bi-play-circle"></i> Create Playlist
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <a class="dropdown-item" href="#" onclick="showPlaylistModal()">
+                    <i class="bi bi-check2-square"></i> Select Videos for Playlist
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item" href="@Url.Action("Tag", "Playlist", new { tagId = Model.Tag.Id })">
+                    <i class="bi bi-play-circle"></i> Play All in Order
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="@Url.Action("Tag", "Playlist", new { tagId = Model.Tag.Id })?shuffle=true">
+                    <i class="bi bi-shuffle"></i> Play All Shuffled
+                </a>
+            </li>
+        </ul>
+    </div>
+
 
 @if (Model.Videos.Any())
 {
@@ -107,3 +112,149 @@
 }
 
 <a href="@Url.Action("Index", "Home")" class="btn btn-secondary">Back to Tags</a>
+
+<div class="modal fade" id="playlistModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Custom Playlist</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Select videos to include in playlist:</span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" onclick="selectAllVideos()">Select All</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="selectNoneVideos()">Select None</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-selection-list" style="max-height: 400px; overflow-y: auto;">
+                    @foreach (var video in Model.Videos)
+                    {
+                        <div class="form-check d-flex align-items-center mb-2">
+                            <input class="form-check-input me-2" type="checkbox" value="@video.Id"
+                                   id="video_@video.Id" data-video-id="@video.Id" checked>
+
+                            @if (!string.IsNullOrEmpty(video.ThumbnailPath))
+                            {
+                                <img src="@Url.Action("SmallThumbnail", "Video", new { id = video.Id })"
+                                     class="rounded me-2" style="width: 60px; height: 40px; object-fit: cover;" alt="Thumbnail">
+                            }
+                            else
+                            {
+                                <div class="bg-light border rounded me-2 d-flex align-items-center justify-content-center"
+                                     style="width: 60px; height: 40px;">
+                                    <i class="bi bi-film text-muted"></i>
+                                </div>
+                            }
+
+                            <div class="flex-grow-1">
+                                <label class="form-check-label" for="video_@video.Id">
+                                    <strong>@video.Title</strong><br>
+                                    <small class="text-muted">@video.DurationFormatted</small>
+                                </label>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <span id="selectedCount">@Model.Videos.Count</span> of @Model.Videos.Count videos selected
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="btn-group me-auto">
+                    <label class="btn btn-outline-secondary">
+                        <input type="radio" name="playlistOrder" value="order" checked> In Order
+                    </label>
+                    <label class="btn btn-outline-secondary">
+                        <input type="radio" name="playlistOrder" value="shuffle"> Shuffled
+                    </label>
+                </div>
+
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createCustomPlaylist()" id="createPlaylistBtn">
+                    <i class="bi bi-play-circle"></i> Create Playlist
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showPlaylistModal() {
+        const modal = new bootstrap.Modal(document.getElementById('playlistModal'));
+        updateSelectedCount();
+        modal.show();
+    }
+
+    function selectAllVideos() {
+        const checkboxes = document.querySelectorAll('#playlistModal input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = true);
+        updateSelectedCount();
+    }
+
+    function selectNoneVideos() {
+        const checkboxes = document.querySelectorAll('#playlistModal input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        const checkboxes = document.querySelectorAll('#playlistModal input[type="checkbox"]');
+        const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        document.getElementById('selectedCount').textContent = selectedCount;
+
+        const createBtn = document.getElementById('createPlaylistBtn');
+        createBtn.disabled = selectedCount === 0;
+    }
+
+    function createCustomPlaylist() {
+        const selectedVideoIds = [];
+        const checkboxes = document.querySelectorAll('#playlistModal input[type="checkbox"]:checked');
+
+        checkboxes.forEach(cb => {
+            selectedVideoIds.push(cb.getAttribute('data-video-id'));
+        });
+
+        if (selectedVideoIds.length === 0) {
+            alert('Please select at least one video');
+            return;
+        }
+
+        const playlistOrder = document.querySelector('input[name="playlistOrder"]:checked').value;
+        const tagId = @Model.Tag.Id;
+
+        // Create the playlist URL with selected video IDs
+        const videoIdsParam = selectedVideoIds.join(',');
+        const playlistUrl = `/Playlist/Custom?tagId=${tagId}&videoIds=${videoIdsParam}&order=${playlistOrder}`;
+
+        // Navigate to the custom playlist
+        window.location.href = playlistUrl;
+    }
+
+    // Add event listeners when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add change event to all checkboxes
+        const checkboxes = document.querySelectorAll('#playlistModal input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateSelectedCount);
+        });
+
+        // Add change event to radio buttons for styling
+        const radioButtons = document.querySelectorAll('input[name="playlistOrder"]');
+        radioButtons.forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Update button styling
+                radioButtons.forEach(r => {
+                    r.parentElement.classList.toggle('active', r.checked);
+                });
+            });
+        });
+    });
+</script>
