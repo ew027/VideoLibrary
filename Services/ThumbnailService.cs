@@ -13,12 +13,17 @@ namespace VideoLibrary.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
         private readonly ILogger<ThumbnailService> _logger;
+        private readonly DbLogService _dbLogger;
 
-        public ThumbnailService(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<ThumbnailService> logger)
+        public ThumbnailService(IServiceProvider serviceProvider, 
+            IConfiguration configuration, 
+            ILogger<ThumbnailService> logger, 
+            DbLogService dbLogger)
         {
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _logger = logger;
+            _dbLogger = dbLogger;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -39,6 +44,7 @@ namespace VideoLibrary.Services
             try
             {
                 _logger.LogInformation("Starting thumbnail generation...");
+                await _dbLogger.Log("Starting thumbnail generation...", DbLogLevel.Information);
 
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -63,10 +69,14 @@ namespace VideoLibrary.Services
                     await GenerateVideoThumbnail(video, thumbnailFolderPath, ffmpegPath, ThumbnailMode.New);
                     await dbContext.SaveChangesAsync();
                 }
+
+                _logger.LogInformation("Thumbnail generation complete");
+                await _dbLogger.Log("Thumbnail generation complete", DbLogLevel.Information);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating thumbnails");
+                await _dbLogger.Log(ex, "Error generating thumbnails", DbLogLevel.Error);
             }
         }
 
@@ -211,6 +221,8 @@ namespace VideoLibrary.Services
         {
             try
             {
+                await _dbLogger.Log("Tag thumbnail generation started", DbLogLevel.Information);
+
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -246,10 +258,14 @@ namespace VideoLibrary.Services
                 }
 
                 await dbContext.SaveChangesAsync();
+
+                _logger.LogInformation("Tag thumbnails updated");
+                await _dbLogger.Log("Tag thumbnail generation complete", DbLogLevel.Information);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating tag thumbnails");
+                await _dbLogger.Log(ex, "Error generating tab thumbnails", DbLogLevel.Error);
             }
         }
     }

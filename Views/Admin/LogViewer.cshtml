@@ -1,0 +1,294 @@
+﻿@model List<VideoLibrary.Models.LogEntry>
+
+@{
+    ViewData["Title"] = "Application Logs";
+    var currentLogLevel = ViewBag.CurrentLogLevel as string ?? "Information";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Admin")">Admin</a></li>
+        <li class="breadcrumb-item active">Application Logs</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-journal-text"></i> Application Logs</h1>
+    <div class="d-flex gap-2">
+        <div class="dropdown">
+            <select class="form-select" id="logLevelFilter" onchange="filterByLogLevel()">
+                <option value="Debug" selected="@(currentLogLevel == "Debug")">Debug & Above</option>
+                <option value="Information" selected="@(currentLogLevel == "Information")">Information & Above</option>
+                <option value="Warning" selected="@(currentLogLevel == "Warning")">Warning & Above</option>
+                <option value="Error" selected="@(currentLogLevel == "Error")">Error & Above</option>
+                <option value="Critical" selected="@(currentLogLevel == "Critical")">Critical Only</option>
+            </select>
+        </div>
+        <button class="btn btn-outline-secondary" onclick="refreshLogs()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <button class="btn btn-outline-danger" onclick="clearLogs()" title="Clear all logs">
+            <i class="bi bi-trash"></i> Clear
+        </button>
+    </div>
+</div>
+
+@if (Model.Any())
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Log Entries (@Model.Count entries)</span>
+            <small class="text-muted">Click rows with stack traces to expand details</small>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="logsTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 180px;">Timestamp</th>
+                        <th style="width: 100px;">Level</th>
+                        <th>Message</th>
+                        <th style="width: 50px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.Count; i++)
+                    {
+                        var log = Model[i];
+                        var hasStackTrace = !string.IsNullOrEmpty(log.StackTrace);
+                        var rowClass = GetLogLevelClass(log.LogLevelString);
+                        
+                        <tr class="log-row @rowClass @(hasStackTrace ? "expandable-row" : "")" 
+                            data-log-index="@i" 
+                            @(hasStackTrace ? "style=cursor:pointer;" : "")
+                            @(hasStackTrace ? "onclick=toggleStackTrace(" + i + ")" : "")>
+                            <td class="timestamp-cell">
+                                @log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                            </td>
+                            <td>
+                                <span class="badge log-level-badge @GetLogLevelBadgeClass(log.LogLevelString)">
+                                    @log.LogLevelString
+                                </span>
+                            </td>
+                            <td class="message-cell">
+                                @log.Message
+                            </td>
+                            <td class="text-center">
+                                @if (hasStackTrace)
+                                {
+                                    <i class="bi bi-chevron-down expand-icon" id="icon-@i"></i>
+                                }
+                            </td>
+                        </tr>
+                        
+                        @if (hasStackTrace)
+                        {
+                            <tr class="stack-trace-row" id="stacktrace-@i" style="display: none;">
+                                <td colspan="4" class="stack-trace-cell">
+                                    <div class="stack-trace-content">
+                                        <strong>Stack Trace:</strong>
+                                        <pre class="stack-trace-pre">@log.StackTrace</pre>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <h4>No log entries found</h4>
+        <p>No log entries match the current filter criteria.</p>
+    </div>
+}
+
+<script>
+function toggleStackTrace(index) {
+    const stackTraceRow = document.getElementById(`stacktrace-${index}`);
+    const icon = document.getElementById(`icon-${index}`);
+    
+    if (stackTraceRow.style.display === 'none') {
+        stackTraceRow.style.display = 'table-row';
+        icon.classList.remove('bi-chevron-down');
+        icon.classList.add('bi-chevron-up');
+    } else {
+        stackTraceRow.style.display = 'none';
+        icon.classList.remove('bi-chevron-up');
+        icon.classList.add('bi-chevron-down');
+    }
+}
+
+function filterByLogLevel() {
+    const logLevel = document.getElementById('logLevelFilter').value;
+    window.location.href = `@Url.Action("Index")?logLevel=${logLevel}`;
+}
+
+function refreshLogs() {
+    const logLevel = document.getElementById('logLevelFilter').value;
+    window.location.href = `@Url.Action("Index")?logLevel=${logLevel}`;
+}
+
+function clearLogs() {
+    if (confirm('Are you sure you want to clear all log entries? This action cannot be undone.')) {
+        fetch('@Url.Action("Clear")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Failed to clear logs');
+            }
+        });
+    }
+}
+
+// Auto-refresh every 30 seconds
+setInterval(function() {
+    if (document.getElementById('autoRefresh')?.checked) {
+        refreshLogs();
+    }
+}, 30000);
+</script>
+
+<style>
+.log-row.log-trace {
+    background-color: #f8f9fa;
+}
+
+.log-row.log-debug {
+    background-color: #f8f9fa;
+}
+
+.log-row.log-information {
+    background-color: transparent;
+}
+
+.log-row.log-warning {
+    background-color: #fff3cd;
+}
+
+.log-row.log-error {
+    background-color: #f8d7da;
+}
+
+.log-row.log-critical {
+    background-color: #f5c6cb;
+}
+
+.expandable-row:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.log-level-badge.badge-trace {
+    background-color: #6c757d;
+}
+
+.log-level-badge.badge-debug {
+    background-color: #6f42c1;
+}
+
+.log-level-badge.badge-information {
+    background-color: #0d6efd;
+}
+
+.log-level-badge.badge-warning {
+    background-color: #fd7e14;
+}
+
+.log-level-badge.badge-error {
+    background-color: #dc3545;
+}
+
+.log-level-badge.badge-critical {
+    background-color: #721c24;
+}
+
+.timestamp-cell {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.message-cell {
+    word-break: break-word;
+    max-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stack-trace-cell {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+.stack-trace-content {
+    padding: 1rem;
+}
+
+.stack-trace-pre {
+    background-color: #212529;
+    color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.expand-icon {
+    transition: transform 0.2s ease;
+    font-size: 1.2rem;
+}
+
+.table-responsive {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.sticky-header th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+
+</style>
+
+@functions {
+    string GetLogLevelClass(string logLevel)
+    {
+        return logLevel?.ToLower() switch
+        {
+            "trace" => "log-trace",
+            "debug" => "log-debug", 
+            "information" => "log-information",
+            "warning" => "log-warning",
+            "error" => "log-error",
+            "critical" => "log-critical",
+            _ => "log-information"
+        };
+    }
+    
+    string GetLogLevelBadgeClass(string logLevel)
+    {
+        return logLevel?.ToLower() switch
+        {
+            "trace" => "badge-trace",
+            "debug" => "badge-debug",
+            "information" => "badge-information", 
+            "warning" => "badge-warning",
+            "error" => "badge-error",
+            "critical" => "badge-critical",
+            _ => "badge-information"
+        };
+    }
+}

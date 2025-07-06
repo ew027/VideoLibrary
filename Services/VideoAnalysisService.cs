@@ -8,13 +8,15 @@ namespace VideoLibrary.Services
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<VideoAnalysisService> _logger;
+        private readonly DbLogService _dbLogger;
 
-        public VideoAnalysisService(IServiceProvider serviceProvider, ILogger<VideoAnalysisService> logger)
+        public VideoAnalysisService(IServiceProvider serviceProvider, 
+            ILogger<VideoAnalysisService> logger, 
+            DbLogService dbLogger)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
-
-            
+            _dbLogger = dbLogger;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -33,6 +35,8 @@ namespace VideoLibrary.Services
         {
             try
             {
+                await _dbLogger.Log("Video analysis started", DbLogLevel.Information);
+
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -49,12 +53,15 @@ namespace VideoLibrary.Services
                 if (videosToAnalyze.Any())
                 {
                     await dbContext.SaveChangesAsync();
+
                     _logger.LogInformation("Analyzed {Count} videos", videosToAnalyze.Count);
+                    await _dbLogger.Log($"Analyzed {videosToAnalyze.Count} videos", DbLogLevel.Information);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error analyzing videos");
+                await _dbLogger.Log(ex, "Error generating tab thumbnails", DbLogLevel.Error);
             }
         }
 

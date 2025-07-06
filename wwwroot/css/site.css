@@ -69,3 +69,17 @@ a.video-link {
         font-size: 0.8rem;
     }
 }
+
+@media (max-width: 768px) {
+    .timestamp-cell {
+        font-size: 0.8rem;
+    }
+
+    .message-cell {
+        font-size: 0.9rem;
+    }
+
+    .table th, .table td {
+        padding: 0.5rem;
+    }
+}

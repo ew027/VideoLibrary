@@ -38,7 +38,7 @@ namespace VideoLibrary.Controllers
                 return RedirectToAction("ByTag", "Video", new { tagId });
             }
 
-            var playlist = new PlaylistViewModel
+            var playlist = new PlaylistPlayViewModel
             {
                 TagId = tagId,
                 TagName = tag.Name,
@@ -64,7 +64,7 @@ namespace VideoLibrary.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            var playlist = new PlaylistViewModel
+            var playlist = new PlaylistPlayViewModel
             {
                 TagName = $"Random Playlist ({videos.Count} videos)",
                 Videos = videos,
@@ -94,7 +94,7 @@ namespace VideoLibrary.Controllers
             var tag = await _context.Tags.FirstOrDefaultAsync(x => x.Id == tagId);
             var tagName = (tag is null) ? "Custom playlist" : $"Custom playlist for {tag.Name}";
 
-            var playlist = new PlaylistViewModel
+            var playlist = new PlaylistPlayViewModel
             {
                 TagName = tagName,
                 Videos = videos,
@@ -120,7 +120,7 @@ namespace VideoLibrary.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            var playlist = new PlaylistViewModel
+            var playlist = new PlaylistPlayViewModel
             {
                 TagName = $"Recently Added ({videos.Count} videos)",
                 Videos = videos,
@@ -143,7 +143,7 @@ namespace VideoLibrary.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            var playlist = new PlaylistViewModel
+            var playlist = new PlaylistPlayViewModel
             {
                 TagName = $"All Videos ({videos.Count} videos)",
                 Videos = videos,
@@ -187,6 +187,130 @@ namespace VideoLibrary.Controllers
                 .ToList();
 
             return Json(videos);
+        }
+
+        public async Task<IActionResult> Saved()
+        {
+            var savedPlaylists = await _context.Playlists
+                .OrderByDescending(p => p.DateLastPlayed)
+                .ToListAsync();
+
+            var playlistViewModels = new List<SavedPlaylistViewModel>();
+
+            foreach (var playlist in savedPlaylists)
+            {
+                var videoIds = playlist.GetVideoIdList();
+                var videos = await _context.Videos
+                    .Where(v => videoIds.Contains(v.Id))
+                    .ToListAsync();
+
+                // Maintain the original order
+                videos = videos.OrderBy(v => videoIds.IndexOf(v.Id)).ToList();
+
+                playlistViewModels.Add(new SavedPlaylistViewModel
+                {
+                    Playlist = playlist,
+                    Videos = videos
+                });
+            }
+
+            var viewModel = new SavedPlaylistListViewModel
+            {
+                Playlists = playlistViewModels
+            };
+
+            return View(viewModel);
+        }
+
+        public async Task<IActionResult> Play(int id)
+        {
+            var savedPlaylist = await _context.Playlists.FindAsync(id);
+            if (savedPlaylist == null)
+            {
+                return NotFound();
+            }
+
+            // Update play statistics
+            savedPlaylist.PlayCount++;
+            savedPlaylist.DateLastPlayed = DateTime.Now;
+            await _context.SaveChangesAsync();
+
+            var videoIds = savedPlaylist.GetVideoIdList();
+            var videos = await _context.Videos
+                .Where(v => videoIds.Contains(v.Id))
+                .Include(v => v.VideoTags)
+                .ThenInclude(vt => vt.Tag)
+                .ToListAsync();
+
+            // Apply ordering
+            if (savedPlaylist.IsShuffled)
+            {
+                videos = videos.OrderBy(v => Guid.NewGuid()).ToList();
+            }
+            else
+            {
+                videos = videos.OrderBy(v => videoIds.IndexOf(v.Id)).ToList();
+            }
+
+            var playlist = new PlaylistPlayViewModel
+            {
+                TagName = savedPlaylist.Name,
+                Videos = videos,
+                CurrentIndex = 0,
+                IsRandom = savedPlaylist.IsShuffled
+            };
+
+            return View("Tag", playlist);
+        }
+
+        [HttpGet]
+        public IActionResult Create(int? tagId, string? videoIds, string? order)
+        {
+            var viewModel = new CreatePlaylistViewModel
+            {
+                VideoIds = videoIds ?? string.Empty,
+                IsShuffled = order == "shuffle",
+                TagId = tagId
+            };
+
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Create(CreatePlaylistViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var savedPlaylist = new Playlist
+            {
+                Name = model.Name,
+                Description = model.Description,
+                VideoIds = model.VideoIds,
+                IsShuffled = model.IsShuffled,
+                DateCreated = DateTime.Now,
+                DateLastPlayed = DateTime.Now
+            };
+
+            _context.Playlists.Add(savedPlaylist);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Play), new { id = savedPlaylist.Id });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var playlist = await _context.Playlists.FindAsync(id);
+            if (playlist != null)
+            {
+                _context.Playlists.Remove(playlist);
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(Saved));
         }
     }
 }

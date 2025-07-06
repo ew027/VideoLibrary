@@ -74,6 +74,7 @@ builder.Services.AddScoped<ThumbnailService>();
 builder.Services.AddScoped<VideoAnalysisService>();
 builder.Services.AddScoped<VideoScanService>();
 builder.Services.AddScoped<VideoClippingService>();
+builder.Services.AddScoped<DbLogService>();
 builder.Services.AddSingleton<GalleryService>();
 //builder.Services.AddHostedService<ThumbnailService>(provider => provider.GetService<ThumbnailService>()!);
 
@@ -106,6 +107,8 @@ try
     await AddVideoNotesColumnIfNeeded(context);
     await AddGalleryDbStructure(context);
     await AddGalleryThumbnailColumn(context);
+    await AddLogEntryDbStructure(context);
+    await AddPlaylistDbStructure(context);
 }
 catch (Exception ex)
 {
@@ -244,5 +247,58 @@ static async Task AddGalleryThumbnailColumn(AppDbContext context)
 
         var logger = context.GetService<ILogger<Program>>();
         logger?.LogInformation("Added new gallery columns to existing database");
+    }
+}
+
+static async Task AddLogEntryDbStructure(AppDbContext context)
+{
+    // Check if LogEntries table exists, if not create
+    try
+    {
+        await context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM LogEntries LIMIT 1");
+    }
+    catch
+    {
+        // Create gallery tables
+        await context.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE LogEntries (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Message TEXT NOT NULL,
+                StackTrace TEXT NULL,
+                LogLevel INTEGER,
+                Timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+        ");
+
+        var logger = context.GetService<ILogger<Program>>();
+        logger?.LogInformation("Added logentries tables to existing database");
+    }
+}
+
+static async Task AddPlaylistDbStructure(AppDbContext context)
+{
+    // Check if Playlists table exists, if not create
+    try
+    {
+        await context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM Playlists LIMIT 1");
+    }
+    catch
+    {
+        // Create gallery tables
+        await context.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE Playlists (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL,
+                Description TEXT,
+                VideoIds TEXT NOT NULL DEFAULT '',
+                IsShuffled INTEGER NOT NULL DEFAULT 0,
+                DateCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                DateLastPlayed DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PlayCount INTEGER NOT NULL DEFAULT 0
+            );
+        ");
+
+        var logger = context.GetService<ILogger<Program>>();
+        logger?.LogInformation("Added logentries tables to existing database");
     }
 }

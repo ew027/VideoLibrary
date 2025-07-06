@@ -214,6 +214,7 @@
         createBtn.disabled = selectedCount === 0;
     }
 
+
     function createCustomPlaylist() {
         const selectedVideoIds = [];
         const checkboxes = document.querySelectorAll('#playlistModal input[type="checkbox"]:checked');
@@ -230,12 +231,31 @@
         const playlistOrder = document.querySelector('input[name="playlistOrder"]:checked').value;
         const tagId = @Model.Tag.Id;
 
-        // Create the playlist URL with selected video IDs
+        // Create the playlist URL with selected video IDs - now goes to Create page
         const videoIdsParam = selectedVideoIds.join(',');
-        const playlistUrl = `/Playlist/Custom?tagId=${tagId}&videoIds=${videoIdsParam}&order=${playlistOrder}`;
+        const createUrl = `/Playlist/Create?tagId=${tagId}&videoIds=${videoIdsParam}&order=${playlistOrder}`;
 
-        // Navigate to the custom playlist
-        window.location.href = playlistUrl;
+        // Navigate to the create playlist page
+        window.location.href = createUrl;
+    }
+
+    // Update existing playlist links to include save option
+    function updatePlaylistLinks() {
+        // For tag-based playlists, modify existing links
+        const playAllLinks = document.querySelectorAll('a[href*="/Playlist/Tag"]');
+        playAllLinks.forEach(link => {
+            const originalHref = link.href;
+            link.addEventListener('click', function(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    // Ctrl+Click goes to save playlist
+                    e.preventDefault();
+                    const url = new URL(originalHref);
+                    const tagId = url.searchParams.get('tagId') || url.pathname.split('/').pop();
+                    window.location.href = `/Playlist/Create?tagId=${tagId}&order=order`;
+                }
+                // Normal click plays immediately
+            });
+        });
     }
 
     // Add event listeners when the page loads
@@ -256,5 +276,7 @@
                 });
             });
         });
+
+        updatePlaylistLinks();
     });
 </script>

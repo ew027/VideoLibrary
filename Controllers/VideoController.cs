@@ -13,20 +13,20 @@ namespace VideoLibrary.Controllers
         private readonly AppDbContext _context;
         private readonly ThumbnailService _thumbnailService;
         private readonly VideoAnalysisService _videoAnalysisService;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<VideoController> _logger;
 
         public VideoController(AppDbContext context, 
             ThumbnailService thumbnailService, 
             VideoAnalysisService videoAnalysisService, 
             ILogger<VideoController> logger, 
-            IServiceProvider serviceProvider)
+            IServiceScopeFactory serviceScopeFactory)
         {
             _context = context;
             _thumbnailService = thumbnailService;
             _videoAnalysisService = videoAnalysisService;
             _logger = logger;
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         public async Task<IActionResult> Details(int id, int? tagId = null)
@@ -320,19 +320,9 @@ namespace VideoLibrary.Controllers
             // Start clip creation in background
             _ = Task.Run(async () =>
             {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var clippingService = scope.ServiceProvider.GetRequiredService<VideoClippingService>();
-                    var success = await clippingService.CreateClipAsync(videoId, startSeconds, endSeconds);
-
-                    _logger.LogInformation("Clip creation {Status} for video {VideoId}",
-                        success ? "completed" : "failed", videoId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error in background clip creation for video {VideoId}", videoId);
-                }
+                using var scope = _serviceScopeFactory.CreateScope();
+                var clippingService = scope.ServiceProvider.GetRequiredService<VideoClippingService>();
+                var success = await clippingService.CreateClipAsync(videoId, startSeconds, endSeconds);
             });
 
             TempData["SuccessMessage"] = "Clip creation started in the background. The new clip will appear in your library shortly.";

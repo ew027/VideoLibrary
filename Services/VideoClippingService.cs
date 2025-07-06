@@ -13,24 +13,29 @@ namespace VideoLibrary.Services
 
         private readonly IConfiguration _configuration;
         private readonly ILogger<VideoClippingService> _logger;
+        private readonly DbLogService _dbLogger;
 
         public VideoClippingService(IConfiguration configuration,
             ILogger<VideoClippingService> logger,
             ThumbnailService thumbnailService,
             VideoAnalysisService videoAnalysisService,
-            AppDbContext dbContext)
+            AppDbContext dbContext,
+            DbLogService dbLogger)
         {
             _configuration = configuration;
             _logger = logger;
             _thumbnailService = thumbnailService;
             _videoAnalysisService = videoAnalysisService;
             _dbContext = dbContext;
+            _dbLogger = dbLogger;
         }
 
         public async Task<bool> CreateClipAsync(int originalVideoId, double startSeconds, double endSeconds)
         {
             try
             {
+                await _dbLogger.Log("Clip generation started", DbLogLevel.Information);
+
                 var clipFolder = _configuration["VideoLibrary:ClipFolderPath"];
 
                 var originalVideo = await _dbContext.Videos
@@ -139,14 +144,18 @@ namespace VideoLibrary.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing clip: {ClipId}", clipVideo.Id);
+                    await _dbLogger.Log(ex, "Error processing clip", DbLogLevel.Error);
                 }
 
                 _logger.LogInformation("Clip created successfully: {ClipId} - {ClipPath}", clipVideo.Id, clipFilePath);
+                await _dbLogger.Log($"Clip created successfully: {clipVideo.Id} - {clipFilePath}", DbLogLevel.Information);
                 return true;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating clip for video: {VideoId}", originalVideoId);
+                await _dbLogger.Log(ex, "Error processing clip", DbLogLevel.Error);
+
                 return false;
             }
         }

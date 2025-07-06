@@ -1,0 +1,88 @@
+﻿@model VideoLibrary.Models.CreatePlaylistViewModel
+
+@{
+    ViewData["Title"] = "Create Playlist";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Tags</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Saved", "Playlist")">Playlists</a></li>
+        <li class="breadcrumb-item active">Create</li>
+    </ol>
+</nav>
+
+<h1>Create Playlist</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Playlist Details</h5>
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    <input type="hidden" asp-for="VideoIds" />
+                    <input type="hidden" asp-for="IsShuffled" />
+                    <input type="hidden" asp-for="TagId" />
+
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">Playlist Name</label>
+                        <input asp-for="Name" class="form-control" placeholder="Enter playlist name" required>
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label">Description (Optional)</label>
+                        <textarea asp-for="Description" class="form-control" rows="3" placeholder="Enter a description for this playlist"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input asp-for="IsShuffled" class="form-check-input" disabled>
+                            <label asp-for="IsShuffled" class="form-check-label">
+                                Shuffle playlist when playing
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Create Playlist
+                        </button>
+                        <a href="javascript:history.back()" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Playlist Preview</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>Videos:</strong> <span id="videoCount">0</span></p>
+                <p><strong>Order:</strong> @(Model.IsShuffled ? "Shuffled" : "Sequential")</p>
+                @if (Model.TagId.HasValue)
+                {
+                    <p><strong>Source:</strong> Tag-based playlist</p>
+                }
+                else
+                {
+                    <p><strong>Source:</strong> Custom selection</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const videoIds = '@Model.VideoIds';
+        const count = videoIds ? videoIds.split(',').length : 0;
+        document.getElementById('videoCount').textContent = count;
+    });
+</script>

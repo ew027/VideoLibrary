@@ -1,4 +1,4 @@
-﻿@model VideoLibrary.Models.PlaylistViewModel
+﻿@model VideoLibrary.Models.PlaylistPlayViewModel
 
 @{
     ViewData["Title"] = $"Playlist: {Model.TagName}";
@@ -53,8 +53,8 @@
                             <div class="text-muted">
                                 <small id="currentVideoInfo">
                                     @Model.CurrentVideo?.DurationFormatted |
-                                    @Model.CurrentVideo?.ResolutionFormatted |
-                                    @Model.CurrentVideo?.FileSizeFormatted
+                                    @Model.CurrentVideo?.DurationFormatted |
+                                    @Model.CurrentVideo?.ResolutionFormatted
                                 </small>
                             </div>
                         </div>

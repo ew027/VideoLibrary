@@ -1,6 +1,6 @@
 ﻿namespace VideoLibrary.Models
 {
-    public class PlaylistViewModel
+    public class PlaylistPlayViewModel
     {
         public int? TagId { get; set; }
         public string TagName { get; set; } = string.Empty;

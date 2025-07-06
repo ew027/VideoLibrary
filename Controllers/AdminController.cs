@@ -10,14 +10,17 @@ namespace VideoLibrary.Controllers
     public class AdminController : Controller
     {
         private readonly AppDbContext _context;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<AdminController> _logger;
         private readonly GalleryService _galleryService;
 
-        public AdminController(AppDbContext context, IServiceProvider serviceProvider, ILogger<AdminController> logger, GalleryService galleryService)
+        public AdminController(AppDbContext context, 
+            IServiceScopeFactory serviceScopeFactory, 
+            ILogger<AdminController> logger, 
+            GalleryService galleryService)
         {
             _context = context;
-            _serviceProvider = serviceProvider;
+            _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
             _galleryService = galleryService;
         }
@@ -43,17 +46,9 @@ namespace VideoLibrary.Controllers
         {
             _ = Task.Run(async () =>
             {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var scanService = scope.ServiceProvider.GetRequiredService<VideoScanService>();
-                    await scanService.ScanVideosAsync();
-                    _logger.LogInformation("Manual video scan completed");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during manual video scan");
-                }
+                using var scope = _serviceScopeFactory.CreateScope();
+                var scanService = scope.ServiceProvider.GetRequiredService<VideoScanService>();
+                await scanService.ScanVideosAsync();
             });
 
             TempData["SuccessMessage"] = "Video scan started in the background";
@@ -65,17 +60,10 @@ namespace VideoLibrary.Controllers
         {
             _ = Task.Run(async () =>
             {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var thumbnailService = scope.ServiceProvider.GetRequiredService<ThumbnailService>();
-                    await thumbnailService.GenerateThumbnailsAsync();
-                    _logger.LogInformation("Manual thumbnail generation completed");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during manual thumbnail generation");
-                }
+                using var scope = _serviceScopeFactory.CreateScope();
+                var thumbnailService = scope.ServiceProvider.GetRequiredService<ThumbnailService>();
+                await thumbnailService.GenerateThumbnailsAsync();
+                _logger.LogInformation("Manual thumbnail generation completed");
             });
 
             TempData["SuccessMessage"] = "Thumbnail generation started in the background";
@@ -87,17 +75,9 @@ namespace VideoLibrary.Controllers
         {
             _ = Task.Run(async () =>
             {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var analysisService = scope.ServiceProvider.GetRequiredService<VideoAnalysisService>();
-                    await analysisService.AnalyzeVideosAsync();
-                    _logger.LogInformation("Manual video analysis completed");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during manual video analysis");
-                }
+                using var scope = _serviceScopeFactory.CreateScope();
+                var analysisService = scope.ServiceProvider.GetRequiredService<VideoAnalysisService>();
+                await analysisService.AnalyzeVideosAsync();
             });
 
             TempData["SuccessMessage"] = "Video analysis started in the background";
@@ -109,17 +89,9 @@ namespace VideoLibrary.Controllers
         {
             _ = Task.Run(async () =>
             {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var thumbnailService = scope.ServiceProvider.GetRequiredService<ThumbnailService>();
-                    await thumbnailService.UpdateTagThumbnailsAsync();
-                    _logger.LogInformation("Manual tag thumbnail update completed");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during manual tag thumbnail update");
-                }
+                using var scope = _serviceScopeFactory.CreateScope();
+                var thumbnailService = scope.ServiceProvider.GetRequiredService<ThumbnailService>();
+                await thumbnailService.UpdateTagThumbnailsAsync();
             });
 
             TempData["SuccessMessage"] = "Tag thumbnail update started in the background";
@@ -133,7 +105,7 @@ namespace VideoLibrary.Controllers
             {
                 try
                 {
-                    using var scope = _serviceProvider.CreateScope();
+                    using var scope = _serviceScopeFactory.CreateScope();
 
                     _logger.LogInformation("Starting complete maintenance cycle");
 
@@ -223,15 +195,7 @@ namespace VideoLibrary.Controllers
         {
             _ = Task.Run(async () =>
             {
-                try
-                {
-                    await _galleryService.ScanForNewGalleriesAsync();
-                    _logger.LogInformation("Manual gallery scan completed");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during manual gallery scan");
-                }
+                await _galleryService.ScanForNewGalleriesAsync();
             });
 
             TempData["SuccessMessage"] = "Gallery scan started in the background";
@@ -243,21 +207,35 @@ namespace VideoLibrary.Controllers
         {
             _ = Task.Run(() =>
             {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var galleryService = scope.ServiceProvider.GetRequiredService<GalleryService>();
-                    galleryService.ClearCache();
-                    _logger.LogInformation("Gallery cache cleared");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error clearing gallery cache");
-                }
+                _galleryService.ClearCache();
             });
 
             TempData["SuccessMessage"] = "Gallery cache cleared";
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> LogViewer(int logLevel)
+        {
+            List<LogEntry> logEntries = new List<LogEntry>();
+
+            if (logLevel > 0)
+            {
+                logEntries = await _context.LogEntries
+                    .OrderByDescending(p => p.Id)
+                    .Take(50)
+                    .ToListAsync();
+            }
+            else
+            {
+                logEntries = await _context.LogEntries
+                    .Where(x => (int)x.LogLevel >= logLevel)
+                    .OrderByDescending(p => p.Id)
+                    .Take(50)
+                    .ToListAsync();
+            }
+
+            return View(logEntries);
         }
     }
 }

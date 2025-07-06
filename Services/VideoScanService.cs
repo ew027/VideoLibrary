@@ -127,7 +127,26 @@ namespace VideoLibrary.Services
                     }
                 }
 
+                // now do a sweep through all existing videos to see if any have been deleted
+                var currentVideos = await dbContext.Videos.ToListAsync();
+                int deletedCount = 0;
+
+                foreach (var video in currentVideos)
+                {
+                    if (!File.Exists(video.FilePath))
+                    {
+                        dbContext.Videos.Remove(video);
+                        deletedCount++;
+
+                        _logger.LogInformation($"Deleting {video.Title} as {video.FilePath} no longer exists");
+                    }
+                }
+
+                _logger.LogInformation($"{deletedCount} videos removed");
+
                 await dbContext.SaveChangesAsync();
+
+                _logger.LogInformation("Video scanning complete");
             }
             catch (Exception ex)
             {
