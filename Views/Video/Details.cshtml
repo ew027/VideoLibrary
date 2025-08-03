@@ -21,7 +21,7 @@
     </ol>
 </nav>
 
-<h1>@Model.Video.Title</h1>
+<h2>@Model.Video.Title</h2>
 
 <div class="row">
     <div class="col-md-8">
@@ -51,11 +51,12 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Tags</h5>
-                <a href="@Url.Action("Edit", "Video", new { id = Model.Video.Id })" class="btn btn-sm btn-outline-primary">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="editTags()">
                     <i class="bi bi-pencil"></i> Edit
-                </a>
+                </button>
             </div>
             <div class="card-body">
+                <div id="tagsView">
                 @if (Model.Video.VideoTags.Any())
                 {
                     <div class="d-flex flex-wrap gap-1">
@@ -69,8 +70,33 @@
                 else
                 {
                     <p class="text-muted">No tags assigned</p>
-                    <a href="@Url.Action("Edit", "Video", new { id = Model.Video.Id })" class="btn btn-sm btn-primary">Add Tags</a>
                 }
+                </div>
+                <div id="tagsEdit" style="display: none">
+                    <form asp-action="UpdateTags" method="post">
+                        <input type="hidden" name="videoId" value="@Model.Video.Id">
+                        <input type="hidden" name="selectedTags" id="existingTagIds" value="">
+                        <input type="hidden" name="newTags" id="newTagValues" value="">
+                        <div class="mb-3">
+                            <div class="tag-input-container">
+                                <div class="selected-tags" id="selectedTags"></div>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="tagSearch"
+                                           placeholder="Start typing to search tags..." autocomplete="off">
+                                </div>
+                                <div class="dropdown-menu" id="tagDropdown" style="display: none;"></div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-check"></i> Save Tags
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cancelTagsEdit()">
+                                <i class="bi bi-x"></i> Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 
@@ -117,78 +143,133 @@
 
         <div class="card mt-3">
             <div class="card-header">
-                <h5 class="mb-0">Thumbnail</h5>
-            </div>
-            <div class="card-body">
-                <form asp-action="RefreshThumbnail" method="post">
-                    <input type="hidden" name="videoId" value="@Model.Video.Id">
-                    <div class="input-group">
-                        <input type="number" name="seconds" value="30" min="0" class="form-control form-control-sm"
-                               placeholder="Seconds" title="Time in seconds to capture thumbnail">
-                        <button type="submit" class="btn btn-sm btn-outline-secondary">Refresh</button>
+                <button class="btn btn-link p-0 text-decoration-none w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#playlistPanel">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            Add to Playlist
+                        </h5>
+                        <i class="bi bi-chevron-down"></i>
                     </div>
-                    <small class="form-text text-muted">Generate thumbnail from specific time (seconds)</small>
-                </form>
+                </button>
+            </div>
+            <div class="collapse" id="playlistPanel">
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <!-- Existing thumbnail and re-analyze buttons can go here -->
+                        <form asp-action="AddVideo" asp-controller="Playlist" method="post">
+                            <input type="hidden" name="videoId" value="@Model.Video.Id">
+                            <div class="input-group">
+                                <select name="playlistId" asp-items="@(new SelectList(Model.Playlists, "Id", "Name"))" class="form-control">
+                                    <option value="">-- Select an playlist --</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Add</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="card mt-3">
-    <div class="card-header">
-        <button class="btn btn-link p-0 text-decoration-none w-100 text-start" 
-                type="button" data-bs-toggle="collapse" data-bs-target="#clippingPanel">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="bi bi-scissors"></i> Create Video Clip
-                </h5>
-                <i class="bi bi-chevron-down"></i>
+            <div class="card-header">
+                <button class="btn btn-link p-0 text-decoration-none w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#clippingPanel">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            Create Video Clip
+                        </h5>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                </button>
             </div>
-        </button>
-    </div>
-    <div class="collapse" id="clippingPanel">
-        <div class="card-body">
-            <form asp-action="CreateClip" method="post" id="clippingForm">
+            <div class="collapse" id="clippingPanel">
+                <div class="card-body">
+                    <form asp-action="CreateClip" method="post" id="clippingForm">
                         <input type="hidden" name="videoId" value="@Model.Video.Id">
 
-                <div class="mb-3">
-                    <label class="form-label">Start Time (seconds)</label>
-                    <div class="input-group input-group-sm">
-                        <input type="number" name="startSeconds" id="startSeconds" 
-                               class="form-control" step="0.1" min="0" 
-                               placeholder="0.0" required>
-                        <button type="button" class="btn btn-outline-secondary" 
-                                onclick="setCurrentTime('start')" title="Use current video time">
-                            <i class="bi bi-cursor"></i>
-                        </button>
-                    </div>
-                </div>
+                        <div class="mb-3">
+                            <label class="form-label">Start Time (seconds)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="startSeconds" id="startSeconds"
+                                       class="form-control" step="0.1" min="0"
+                                       placeholder="0.0" required>
+                                <button type="button" class="btn btn-outline-secondary"
+                                        onclick="setCurrentTime('start')" title="Use current video time">
+                                    <i class="bi bi-cursor"></i>
+                                </button>
+                            </div>
+                        </div>
 
-                <div class="mb-3">
-                    <label class="form-label">End Time (seconds)</label>
-                    <div class="input-group input-group-sm">
-                        <input type="number" name="endSeconds" id="endSeconds" 
-                               class="form-control" step="0.1" min="0" 
-                               placeholder="10.0" required>
-                        <button type="button" class="btn btn-outline-secondary" 
-                                onclick="setCurrentTime('end')" title="Use current video time">
-                            <i class="bi bi-cursor"></i>
-                        </button>
-                    </div>
-                </div>
+                        <div class="mb-3">
+                            <label class="form-label">End Time (seconds)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" name="endSeconds" id="endSeconds"
+                                       class="form-control" step="0.1" min="0"
+                                       placeholder="10.0" required>
+                                <button type="button" class="btn btn-outline-secondary"
+                                        onclick="setCurrentTime('end')" title="Use current video time">
+                                    <i class="bi bi-cursor"></i>
+                                </button>
+                            </div>
+                        </div>
 
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between text-muted small">
-                        <span>Duration: <span id="clipDuration">0.0s</span></span>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between text-muted small">
+                                <span>Duration: <span id="clipDuration">0.0s</span></span>
                                 <span>Video Length: @Model.Video.DurationFormatted</span>
-                    </div>
-                </div>
+                            </div>
+                        </div>
 
-                <button type="submit" class="btn btn-primary btn-sm w-100" id="createClipBtn">
-                    <i class="bi bi-scissors"></i> Create Clip
-                </button>
-            </form>
+                        <button type="button" class="btn btn-primary btn-sm" id="previewClipBtn">
+                            Preview Clip
+                        </button>
+
+                        <button type="submit" class="btn btn-primary btn-sm" id="createClipBtn">
+                            <i class="bi bi-scissors"></i> Create Clip
+                        </button>
+                    </form>
+                    
+                </div>
+                <div class="card-body">
+                    <a href="@Url.Action("Index", "VideoEditing", new { videoId = Model.Video.Id })"
+                       class="btn btn-outline-primary">
+                        <i class="bi bi-scissors"></i> Edit complete video
+                    </a>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <button class="btn btn-link p-0 text-decoration-none w-100 text-start"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#thumbPanel">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            Thumbnail
+                        </h5>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                </button>
+            </div>
+            <div class="collapse" id="thumbPanel">
+                <div class="card-body">
+                <div class="d-grid gap-2">
+                    <!-- Existing thumbnail and re-analyze buttons can go here -->
+                    <form asp-action="RefreshThumbnail" method="post">
+                        <input type="hidden" name="videoId" value="@Model.Video.Id">
+                        <div class="input-group">
+                            <input type="number" name="seconds" value="30" min="0" class="form-control form-control-sm"
+                                   placeholder="Seconds" title="Time in seconds to capture thumbnail">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Generate Thumbnail</button>
+                        </div>
+                        <small class="form-text text-muted">Generate thumbnail from specific time (seconds)</small>
+                    </form>
+                </div>
+            </div>
+            </div>
+        </div>
+
 
         <div class="mt-3">
 
@@ -221,7 +302,14 @@
     <a href="javascript:history.back()" class="btn btn-secondary">Back</a>
 </div>
 
-                    <script>
+<script>
+
+const previewBtn = document.getElementById('previewClipBtn');
+const video = document.getElementById('mainVideo');
+let previewActive = false;
+let clipStart = 0;
+let clipEnd = 0;
+
 function toggleNotesEdit() {
     const display = document.getElementById('notesDisplay');
     const edit = document.getElementById('notesEdit');
@@ -286,7 +374,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function setCurrentTime(type) {
-    const video = document.getElementById('mainVideo');
     const currentTime = video.currentTime;
 
     if (type === 'start') {
@@ -303,24 +390,55 @@ function updateClipDuration() {
     const endInput = document.getElementById('endSeconds');
     const durationSpan = document.getElementById('clipDuration');
 
-    const start = parseFloat(startInput.value) || 0;
-    const end = parseFloat(endInput.value) || 0;
-    const duration = Math.max(0, end - start);
+    clipStart = parseFloat(startInput.value) || 0;
+    clipEnd = parseFloat(endInput.value) || 0;
+    const duration = Math.max(0, clipEnd - clipStart);
 
     durationSpan.textContent = duration.toFixed(1) + 's';
 
     // Update button state
     const createBtn = document.getElementById('createClipBtn');
-    if (duration > 0 && start >= 0) {
+
+    if (duration > 0 && clipStart >= 0) {
         createBtn.disabled = false;
         createBtn.classList.remove('btn-secondary');
         createBtn.classList.add('btn-primary');
+
+        previewBtn.disabled = false;
+        previewBtn.classList.remove('btn-secondary');
+        previewBtn.classList.add('btn-primary');
     } else {
         createBtn.disabled = true;
         createBtn.classList.remove('btn-primary');
         createBtn.classList.add('btn-secondary');
+
+        previewBtn.disabled = true;
+        previewBtn.classList.remove('btn-primary');
+        previewBtn.classList.add('btn-secondary');
     }
 }
+
+video.addEventListener('timeupdate', function() {
+    if (previewActive)
+    {
+        if (video.currentTime > clipEnd)
+        {
+            video.pause();
+            previewActive = false;
+        }
+    }
+});
+
+previewBtn.addEventListener('click', function() {
+    video.currentTime = clipStart;
+
+    if (video.paused)
+    {
+        video.play();
+    }
+
+    previewActive = true;
+});
 
 // Add event listeners for duration calculation
 document.addEventListener('DOMContentLoaded', function() {
@@ -374,6 +492,217 @@ document.addEventListener('keydown', function(e) {
         setCurrentTime('end');
     }
 });
+</script>
+
+<script>
+
+    class MultiTagSelector {
+        constructor() {
+            let tagData = @Html.Raw(Json.Serialize(Model.Video.VideoTags.Select(vt => new { id = vt.Tag.Id, name = vt.Tag.Name })));
+            this.selectedTags = new Map(tagData.map(tag => [tag.id, tag.name]));
+            this.allTags = [];
+            this.initializeEventListeners();
+
+            this.newTagId = -1;
+        }
+
+        initializeEventListeners() {
+            const tagSearch = document.getElementById('tagSearch');
+            const tagDropdown = document.getElementById('tagDropdown');
+
+            // Input event for autocomplete
+            tagSearch.addEventListener('input', (e) => {
+                this.handleSearchInput(e.target.value);
+            });
+
+            // Handle Enter key
+            tagSearch.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const dropdown = document.getElementById('tagDropdown');
+                    const firstItem = dropdown.querySelector('.dropdown-item');
+                    if (firstItem && dropdown.style.display != 'none') {
+                        firstItem.click();
+                    }
+                    else {
+                        // treat it as a new tag
+                        this.selectTag(this.newTagId, e.target.value);
+                    }
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.tag-input-container')) {
+                    tagDropdown.style.display = 'none';
+                }
+            });
+        }
+
+        handleSearchInput(searchTerm) {
+            const dropdown = document.getElementById('tagDropdown');
+
+            if (searchTerm.trim() === '') {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            const filteredTags = this.allTags.filter(tag =>
+                tag.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                !this.selectedTags.has(tag.id)
+            );
+
+            this.renderDropdown(filteredTags, searchTerm);
+        }
+
+        renderDropdown(tags, searchTerm) {
+            const dropdown = document.getElementById('tagDropdown');
+
+            if (tags.length === 0) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            const html = tags.slice(0, 10).map(tag => `
+                <button type="button" class="dropdown-item" onclick="multiTagSelector.selectTag(${tag.id}, '${tag.name}')">
+                    <i class="bi bi-tag"></i> ${this.highlightMatch(tag.name, searchTerm)}
+                </button>
+            `).join('');
+
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+            dropdown.style.position = 'absolute';
+            dropdown.style.top = '100%';
+            dropdown.style.left = '0';
+            dropdown.style.right = '0';
+            dropdown.style.zIndex = '1000';
+        }
+
+        highlightMatch(text, searchTerm) {
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            return text.replace(regex, '<strong>$1</strong>');
+        }
+
+        selectTag(tagId, tagName) {
+            this.selectedTags.set(tagId, tagName);
+            this.renderSelectedTags();
+            //this.updateUI();
+
+            if (tagId < 0) {
+                this.newTagId--;
+            }
+
+            // Clear search input
+            document.getElementById('tagSearch').value = '';
+            document.getElementById('tagDropdown').style.display = 'none';
+        }
+
+        removeTag(tagId) {
+            this.selectedTags.delete(tagId);
+            this.renderSelectedTags();
+            //this.updateUI();
+        }
+
+        renderSelectedTags() {
+            const container = document.getElementById('selectedTags');
+
+            if (this.selectedTags.size === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const html = Array.from(this.selectedTags.entries()).map(([tagId, tagName]) => `
+                <span class="badge bg-primary me-1 mb-1 selected-tag">
+                    ${tagName}
+                    <button type="button" class="btn-close btn-close-white ms-1"
+                            onclick="multiTagSelector.removeTag(${tagId})" style="font-size: 0.7em;"></button>
+                </span>
+            `).join('');
+
+            container.innerHTML = html;
+
+            const existingTagIds = [];
+            const newTagValues = [];
+
+            // Iterate through the map
+            this.selectedTags.forEach((value, id) => {
+                if (id > 0) {
+                    existingTagIds.push(id);
+                } else if (id < 0) {
+                    newTagValues.push(value);
+                }
+            });
+
+            document.getElementById('existingTagIds').value = existingTagIds.join(',');
+            document.getElementById('newTagValues').value = newTagValues.join(',');
+        }
+
+        updateUI() {
+            const count = this.selectedTags.size;
+            const countElement = document.getElementById('selectedTagsCount');
+            const viewButton = document.getElementById('viewTagsBtn');
+
+            if (count === 0) {
+                countElement.textContent = 'No tags selected';
+                viewButton.disabled = true;
+            } else {
+                countElement.textContent = `${count} tag${count === 1 ? '' : 's'} selected`;
+                viewButton.disabled = false;
+            }
+        }
+
+        clear() {
+            this.selectedTags.clear();
+            this.renderSelectedTags();
+            //this.updateUI();
+            document.getElementById('tagSearch').value = '';
+            document.getElementById('tagDropdown').style.display = 'none';
+        }
+
+        viewSelected() {
+            if (this.selectedTags.size === 0) return;
+
+            const tagIds = Array.from(this.selectedTags.keys()).join(',');
+            const url = `/Video/ByMultipleTags?tagIds=${tagIds}`;
+            window.location.href = url;
+        }
+    }
+
+    // Global functions
+    let multiTagSelector;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        multiTagSelector = new MultiTagSelector();
+    });
+
+    function addTagToSelection(tagId, tagName) {
+        multiTagSelector.selectTag(tagId, tagName);
+    }
+
+    async function editTags() {
+        document.getElementById('tagsView').style.display = 'none';
+        document.getElementById('tagsEdit').style.display = '';
+
+        multiTagSelector.renderSelectedTags();
+
+        if (multiTagSelector.allTags.length === 0) {
+            try {
+                const response = await fetch('/Video/GetAllTags');
+                if (response.ok) {
+                    multiTagSelector.allTags = await response.json();
+                } else {
+                    console.error('Failed to load tags:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error loading tags:', error);
+            }
+        }
+    }
+
+    function cancelTagsEdit() {
+        document.getElementById('tagsView').style.display = '';
+        document.getElementById('tagsEdit').style.display = 'none';
+    }
 </script>
 
 <style>

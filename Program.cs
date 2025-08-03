@@ -75,6 +75,7 @@ builder.Services.AddScoped<VideoAnalysisService>();
 builder.Services.AddScoped<VideoScanService>();
 builder.Services.AddScoped<VideoClippingService>();
 builder.Services.AddScoped<DbLogService>();
+builder.Services.AddSingleton<ImageCacheService>();
 builder.Services.AddSingleton<GalleryService>();
 //builder.Services.AddHostedService<ThumbnailService>(provider => provider.GetService<ThumbnailService>()!);
 

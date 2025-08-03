@@ -15,18 +15,23 @@ namespace VideoLibrary.Controllers
         private readonly VideoAnalysisService _videoAnalysisService;
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<VideoController> _logger;
+        private readonly ImageCacheService _imageCacheService;
 
-        public VideoController(AppDbContext context, 
-            ThumbnailService thumbnailService, 
-            VideoAnalysisService videoAnalysisService, 
-            ILogger<VideoController> logger, 
-            IServiceScopeFactory serviceScopeFactory)
+        private static int? ClipTagId;
+
+        public VideoController(AppDbContext context,
+            ThumbnailService thumbnailService,
+            VideoAnalysisService videoAnalysisService,
+            ILogger<VideoController> logger,
+            IServiceScopeFactory serviceScopeFactory,
+            ImageCacheService imageCacheService)
         {
             _context = context;
             _thumbnailService = thumbnailService;
             _videoAnalysisService = videoAnalysisService;
             _logger = logger;
             _serviceScopeFactory = serviceScopeFactory;
+            _imageCacheService = imageCacheService;
         }
 
         public async Task<IActionResult> Details(int id, int? tagId = null)
@@ -52,16 +57,28 @@ namespace VideoLibrary.Controllers
                 viewModel = new VideoViewModel { Video = video };
             }
 
+            viewModel.Playlists = await _context.Playlists.ToListAsync();
+
             return View(viewModel);
         }
 
         public async Task<IActionResult> ByTag(int tagId)
         {
+            if (ClipTagId is null)
+            {
+                var clipTag = await _context.Tags.FirstOrDefaultAsync(x => x.Name == "clips");
+
+                if (clipTag != null)
+                {
+                    ClipTagId = clipTag.Id;
+                }
+            }
+
             var tagViewModel = new TagWithContentViewModel();
 
             var tag = await _context.Tags
-                .Include(t => t.VideoTags)
-                .ThenInclude(vt => vt.Video)
+                //.Include(t => t.VideoTags)
+                //.ThenInclude(vt => vt.Video)
                 .FirstOrDefaultAsync(t => t.Id == tagId);
 
             if (tag == null)
@@ -71,9 +88,14 @@ namespace VideoLibrary.Controllers
 
             // Get videos for this tag
             var videos = await _context.Videos
+                .Include(v => v.VideoTags)
+                .ThenInclude(vt => vt.Tag)
                 .Where(v => v.VideoTags.Any(vt => vt.TagId == tagId))
                 .OrderBy(v => v.Title)
                 .ToListAsync();
+
+            var videosWithoutClips = videos.Where(v => !v.VideoTags.Any(vt => vt.TagId == ClipTagId)).ToList();
+            var videosWithClips = videos.Where(v => v.VideoTags.Any(vt => vt.TagId == ClipTagId)).ToList();
 
             // Get galleries for this tag
             var galleries = await _context.Galleries
@@ -84,7 +106,8 @@ namespace VideoLibrary.Controllers
                 .ToListAsync();
 
             tagViewModel.Galleries = galleries;
-            tagViewModel.Videos = videos;
+            tagViewModel.Videos = videosWithoutClips;
+            tagViewModel.ClipVideos = videosWithClips;
             tagViewModel.Tag = tag;
 
             return View(tagViewModel);
@@ -136,6 +159,13 @@ namespace VideoLibrary.Controllers
             return View("ByTag", viewModel);
         }
 
+        public async Task<IActionResult> GetAllTags()
+        {
+            var tags = await _context.Tags.Select(x => new { id = x.Id, name = x.Name }).ToListAsync();
+
+            return Json(tags);
+        }
+
         private List<int> ParseTagIds(string tagIds)
         {
             if (string.IsNullOrWhiteSpace(tagIds))
@@ -166,8 +196,29 @@ namespace VideoLibrary.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateTags(int videoId, int[] selectedTags)
+        public async Task<IActionResult> UpdateTags(int videoId, string selectedTags, string newTags)
         {
+            List<int> tagList = new List<int>();
+            List<string> newTagList = new List<string>();
+
+            if (!string.IsNullOrEmpty(selectedTags))
+            {
+                try
+                {
+                    tagList = selectedTags.Split(',').Select(t => Convert.ToInt32(t)).ToList();
+                }
+                catch (FormatException)
+                {
+                    return BadRequest("Invalid tag format in selected tags");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(newTags))
+            {
+                // Split new tags by comma, trim whitespace, and filter out empty strings
+                newTagList = newTags.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
+            }
+
             var video = await _context.Videos
                 .Include(v => v.VideoTags)
                 .FirstOrDefaultAsync(v => v.Id == videoId);
@@ -177,11 +228,25 @@ namespace VideoLibrary.Controllers
                 return NotFound();
             }
 
+            // deal with any new tags
+            foreach (var newTag in newTagList)
+            {
+                var existingTag = await _context.Tags.FirstOrDefaultAsync(t => t.Name == newTag);
+                if (existingTag == null)
+                {
+                    existingTag = new Tag { Name = newTag };
+                    _context.Tags.Add(existingTag);
+                    await _context.SaveChangesAsync();
+                }
+
+                tagList.Add(existingTag.Id);
+            }
+
             // Remove existing tags
             _context.VideoTags.RemoveRange(video.VideoTags);
 
             // Add new tags
-            foreach (var tagId in selectedTags)
+            foreach (var tagId in tagList)
             {
                 video.VideoTags.Add(new VideoTag { VideoId = videoId, TagId = tagId });
             }
@@ -247,7 +312,9 @@ namespace VideoLibrary.Controllers
                 return NotFound();
             }
 
-            var fileStream = new FileStream(video.ThumbnailPath, FileMode.Open, FileAccess.Read);
+            var cachedPath = _imageCacheService.GetCachedPath(video.ThumbnailPath);
+
+            var fileStream = new FileStream(cachedPath, FileMode.Open, FileAccess.Read);
             return File(fileStream, "image/jpeg");
         }
 
@@ -266,7 +333,9 @@ namespace VideoLibrary.Controllers
                 return NotFound();
             }
 
-            var fileStream = new FileStream(smallThumbnailPath, FileMode.Open, FileAccess.Read);
+            var cachedPath = _imageCacheService.GetCachedPath(smallThumbnailPath);
+
+            var fileStream = new FileStream(cachedPath, FileMode.Open, FileAccess.Read);
             return File(fileStream, "image/jpeg");
         }
 

@@ -312,5 +312,27 @@ namespace VideoLibrary.Controllers
 
             return RedirectToAction(nameof(Saved));
         }
+
+        [HttpPost]
+        public async Task<IActionResult> AddVideo(int videoId, int playlistId)
+        {
+            var playlist = await _context.Playlists.FindAsync(playlistId);
+            if (playlist != null)
+            {
+                var videoIds = playlist.GetVideoIdList();
+
+                if (!videoIds.Contains(videoId))
+                {
+                    videoIds.Add(videoId);
+                    playlist.SetVideoIds(videoIds);
+
+                    await _context.SaveChangesAsync();
+                }
+
+                TempData["SuccessMessage"] = "Video added to playlist!";
+            }
+
+            return RedirectToAction("Details", "Video", new { id = videoId });
+        }
     }
 }

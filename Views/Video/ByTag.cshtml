@@ -61,18 +61,61 @@
                         </a>                    
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title">@video.Title</h5>
-                                <a href="@Url.Action("Edit", "Video", new { id = video.Id })" class="btn btn-outline-secondary btn-sm">Edit</a>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <span class="video-info">@video.ResolutionFormatted</span>
-                                <span class="video-info">@video.DurationFormatted</span>
+                            <span class="video-info"><b>@video.Title</b></span>
+                            <span class="video-info">@video.ResolutionFormatted, @video.DurationFormatted</span>
+                        </div>
+                            <div class="d-flex mb-2">
+                            @foreach (var videoTag in video.VideoTags)
+                            {
+                                <a href="@Url.Action("ByTag", "Video", new { tagId = videoTag.Tag.Id })"
+                                   class="badge bg-primary tag-badge">@videoTag.Tag.Name</a>
+                            }
                             </div>
                         </div>
                         </div>
                     </div>
         }
         </div>
+}
+
+@if (Model.ClipVideos.Any())
+{
+    <h3>Clips</h3>
+    <div class="row">
+        @foreach (var video in Model.ClipVideos)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card video-card">
+                    <a href="@Url.Action("Details", "Video", new { id = video.Id, tagId = Model.Tag.Id })" class="video-link">
+                        @if (!string.IsNullOrEmpty(video.ThumbnailPath))
+                        {
+                            <img src="@Url.Action("SmallThumbnail", "Video", new { id = video.Id })"
+                                 class="card-img-top video-thumbnail" alt="@video.Title">
+                        }
+                        else
+                        {
+                            <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <span class="text-muted">Generating Thumbnail...</span>
+                            </div>
+                        }
+                    </a>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="video-info"><b>@video.Title</b></span>
+                            <span class="video-info">@video.ResolutionFormatted, @video.DurationFormatted</span>
+                        </div>
+                        <div class="d-flex mb-2">
+                            @foreach (var videoTag in video.VideoTags)
+                            {
+                                <a href="@Url.Action("ByTag", "Video", new { tagId = videoTag.Tag.Id })"
+                                   class="badge bg-primary tag-badge">@videoTag.Tag.Name</a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 }
 
 @if (Model.Galleries.Any())
@@ -132,6 +175,33 @@
                 </div>
 
                 <div class="video-selection-list" style="max-height: 400px; overflow-y: auto;">
+                    @foreach (var video in Model.ClipVideos)
+                    {
+                        <div class="form-check d-flex align-items-center mb-2">
+                            <input class="form-check-input me-2" type="checkbox" value="@video.Id"
+                                   id="video_@video.Id" data-video-id="@video.Id" checked>
+
+                            @if (!string.IsNullOrEmpty(video.ThumbnailPath))
+                            {
+                                <img src="@Url.Action("SmallThumbnail", "Video", new { id = video.Id })"
+                                     class="rounded me-2" style="width: 60px; height: 40px; object-fit: cover;" alt="Thumbnail">
+                            }
+                            else
+                            {
+                                <div class="bg-light border rounded me-2 d-flex align-items-center justify-content-center"
+                                     style="width: 60px; height: 40px;">
+                                    <i class="bi bi-film text-muted"></i>
+                                </div>
+                            }
+
+                            <div class="flex-grow-1">
+                                <label class="form-check-label" for="video_@video.Id">
+                                    <strong>@video.Title</strong><br>
+                                    <small class="text-muted">@video.DurationFormatted</small>
+                                </label>
+                            </div>
+                        </div>
+                    }
                     @foreach (var video in Model.Videos)
                     {
                         <div class="form-check d-flex align-items-center mb-2">

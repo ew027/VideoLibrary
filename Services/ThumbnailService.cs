@@ -14,16 +14,19 @@ namespace VideoLibrary.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<ThumbnailService> _logger;
         private readonly DbLogService _dbLogger;
+        private readonly ImageCacheService _imageCacheService;
 
-        public ThumbnailService(IServiceProvider serviceProvider, 
-            IConfiguration configuration, 
-            ILogger<ThumbnailService> logger, 
-            DbLogService dbLogger)
+        public ThumbnailService(IServiceProvider serviceProvider,
+            IConfiguration configuration,
+            ILogger<ThumbnailService> logger,
+            DbLogService dbLogger,
+            ImageCacheService imageCacheService)
         {
             _serviceProvider = serviceProvider;
             _configuration = configuration;
             _logger = logger;
             _dbLogger = dbLogger;
+            _imageCacheService = imageCacheService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -140,6 +143,9 @@ namespace VideoLibrary.Services
 
                         // Generate small thumbnail from the full-size one
                         await GenerateSmallThumbnail(thumbnailPath, smallThumbnailPath);
+
+                        _imageCacheService.ClearCache(thumbnailPath); // Clear cache if it exists
+                        _imageCacheService.ClearCache(smallThumbnailPath); // Clear cache for small thumbnail
                     }
                     else
                     {

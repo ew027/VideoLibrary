@@ -68,6 +68,10 @@ a.video-link {
     .playlist-item .playlist-title {
         font-size: 0.8rem;
     }
+
+    .clips-container {
+        max-height: 300px;
+    }
 }
 
 @media (max-width: 768px) {

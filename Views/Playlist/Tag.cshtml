@@ -139,12 +139,6 @@
                                             <i class="bi bi-film text-muted"></i>
                                         </div>
                                     }
-                                    @if (isActive)
-                                    {
-                                        <div class="position-absolute top-50 start-50 translate-middle">
-                                            <i class="bi bi-play-fill text-white" style="font-size: 1.5rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);"></i>
-                                        </div>
-                                    }
                                 </div>
                                 <div class="flex-grow-1 ms-2">
                                     <div class="playlist-title" style="font-size: 0.9rem; line-height: 1.2;">
@@ -153,12 +147,6 @@
                                     <small class="@(isActive ? "text-white-50" : "text-muted")">
                                         @video.DurationFormatted
                                     </small>
-                                    @if (isActive)
-                                    {
-                                        <div class="mt-1">
-                                            <small class="badge bg-light text-dark">Now Playing</small>
-                                        </div>
-                                    }
                                 </div>
                             </div>
                         </div>
@@ -212,8 +200,15 @@
         bindEvents() {
             // Video events
             this.video.addEventListener('ended', () => {
-                if (this.autoplaySwitch.checked && this.hasNext()) {
-                    this.next();
+                if (this.autoplaySwitch.checked) {
+                    if (this.hasNext()) {
+                        this.next();
+                    } else {
+                        this.jumpToVideo(0);
+                    }
+                } else {
+                    this.video.currentTime = 0;
+                    this.video.play();
                 }
             });
 

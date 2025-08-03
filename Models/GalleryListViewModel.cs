@@ -24,6 +24,7 @@
     {
         public Tag Tag { get; set; } = null!;
         public List<Video> Videos { get; set; } = new();
+        public List<Video> ClipVideos { get; set; } = new();
         public List<Gallery> Galleries { get; set; } = new();
         public int TotalVideos => Videos.Count;
         public int TotalGalleries => Galleries.Count;

@@ -145,7 +145,6 @@ namespace VideoLibrary.Controllers
             return RedirectToAction(nameof(Details), new { id = galleryId });
         }
 
-        [AllowAnonymous]
         public IActionResult Thumbnail(int galleryId, string fileName)
         {
             var gallery = _context.Galleries.Find(galleryId);
@@ -173,7 +172,6 @@ namespace VideoLibrary.Controllers
             return File(fileStream, contentType);
         }
 
-        [AllowAnonymous]
         public IActionResult Medium(int galleryId, string fileName)
         {
             var gallery = _context.Galleries.Find(galleryId);
@@ -198,7 +196,6 @@ namespace VideoLibrary.Controllers
             return File(fileStream, contentType);
         }
 
-        [AllowAnonymous]
         public IActionResult Full(int galleryId, string fileName)
         {
             var gallery = _context.Galleries.Find(galleryId);
