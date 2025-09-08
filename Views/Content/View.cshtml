@@ -1,0 +1,34 @@
+﻿@model VideoLibrary.Models.Content
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="mb-3">
+    <a asp-action="Index" class="btn btn-secondary">← Back to Content List</a>
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edit</a>
+</div>
+
+<article>
+    <header class="mb-4">
+        <h1 class="display-4">@Html.DisplayFor(model => model.Title)</h1>
+        <p class="text-muted">
+            <small>
+                Last updated: @Html.DisplayFor(model => model.DateLastUpdated)
+                @if (Model.DateCreated != Model.DateLastUpdated)
+                {
+                    <span> | Created: @Html.DisplayFor(model => model.DateCreated)</span>
+                }
+            </small>
+        </p>
+    </header>
+
+    <div class="content-body">
+        @Html.Raw(Model.ContentText)
+    </div>
+</article>
+
+<div class="mt-5 pt-3 border-top">
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary me-2">Edit</a>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</div>

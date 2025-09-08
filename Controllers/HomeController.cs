@@ -40,7 +40,41 @@ namespace VideoLibrary.Controllers
             //var sql = tags.ToQueryString();
             //_logger.LogInformation("Generated SQL: {SQL}", sql);
 
+            ViewData["IsSearch"] = false;
+
             return View(tags);
+        }
+
+        public async Task<IActionResult> Search(string q)
+        {
+            ViewData["SearchQuery"] = q;
+
+            if (string.IsNullOrWhiteSpace(q))
+            {
+                // Return to main page if no search query
+                return RedirectToAction(nameof(Index));
+            }
+
+            var query = _context.Tags
+                    .Where(t => _context.VideoTags.Any(vt => vt.TagId == t.Id) ||
+                                _context.GalleryTags.Any(gt => gt.TagId == t.Id));
+
+            // Add case-insensitive search filter if search phrase is provided
+            if (!string.IsNullOrEmpty(q))
+            {
+                query = query.Where(t => EF.Functions.Like(t.Name, $"%{q}%"));
+            }
+
+            var tags = await query
+                .Include(tag => tag.VideoTags)
+                .Include(tag => tag.GalleryTags)
+                .AsSplitQuery()
+                .OrderBy(t => t.Name)
+                .ToListAsync();
+
+            ViewData["IsSearch"] = true;
+
+            return View("Index", tags);
         }
 
         public IActionResult SmallThumbnail(int id)

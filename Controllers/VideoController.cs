@@ -166,6 +166,36 @@ namespace VideoLibrary.Controllers
             return Json(tags);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditTitle(int id, string title)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    return Json(new { success = false, message = "Title cannot be empty" });
+                }
+
+                var video = await _context.Videos.FindAsync(id);
+                if (video == null)
+                {
+                    return Json(new { success = false, message = "Video not found" });
+                }
+
+                video.Title = title.Trim();
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Title updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                _logger.LogError(ex, "Error updating video title for ID {VideoId}", id);
+                return Json(new { success = false, message = "An error occurred while updating the title" });
+            }
+        }
+
         private List<int> ParseTagIds(string tagIds)
         {
             if (string.IsNullOrWhiteSpace(tagIds))

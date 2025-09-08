@@ -20,8 +20,14 @@
     var letterIndex = 0;
 }
 <div class="d-flex justify-content-between align-items-start mb-2">
-    <h1>Video Tags</h1>
-    <input type="text" placeholder="Filter tags..." id="txtTagFilter" />
+    @if ((bool)ViewData["IsSearch"])
+    {
+        <h2>Search results for @ViewData["SearchQuery"]</h2>
+    }
+    else
+    {
+        <h2>Video Tags</h2>
+    }
 </div>
 <div class="d-flex justify-content-between align-items-start mb-2">
     <div>
@@ -34,12 +40,12 @@
 
         </strong>
     </div>
-   
+
 </div>
 <div class="card mb-4">
     <div class="card-header">
         <button class="btn btn-link p-0 text-decoration-none w-100 text-start" 
-                type="button" data-bs-toggle="collapse" data-bs-target="#tagPanel">
+        type="button" data-bs-toggle="collapse" data-bs-target="#tagPanel">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i class="bi bi-tags"></i> Tag browser
@@ -55,7 +61,7 @@
                     <div class="selected-tags" id="selectedTags"></div>
                     <div class="input-group">
                         <input type="text" class="form-control" id="tagSearch" 
-                               placeholder="Start typing to search tags..." autocomplete="off">
+                        placeholder="Start typing to search tags..." autocomplete="off">
                         <button class="btn btn-outline-secondary" type="button" onclick="clearAllTags()">
                             <i class="bi bi-x"></i> Clear
                         </button>
@@ -69,7 +75,7 @@
                     <span class="text-muted" id="selectedTagsCount">No tags selected</span>
                 </div>
                 <button type="button" class="btn btn-primary" onclick="viewSelectedTags()" 
-                        id="viewTagsBtn" disabled>
+                id="viewTagsBtn" disabled>
                     <i class="bi bi-eye"></i> View Videos
                 </button>
             </div>
@@ -79,16 +85,21 @@
 <div class="row">
     @foreach (var tag in Model)
     {
-        @if (tag.Name.Substring(0, 1).ToLower() == startLetters[letterIndex])
+        @if (startLetters.Count > 1)
         {
-            <a href="#top" class="top-link">top</a> <a name="sw-@startLetters[letterIndex]"></a>
-            if (letterIndex < startLetters.Count - 1)
+            @if (tag.Name.Substring(0, 1).ToLower() == startLetters[letterIndex])
             {
-                letterIndex++;
-            }
-            else
-            {
-                letterIndex = 0;
+                <a href="#top" class="top-link">top</a> 
+                <a name="sw-@startLetters[letterIndex]
+                "></a>
+                if (letterIndex < startLetters.Count - 1)
+                {
+                    letterIndex++;
+                }
+                else
+                {
+                    letterIndex = 0;
+                }
             }
         }
         <div class="col-md-3 mb-4 outer-card" data-tagname="@tag.Name">
@@ -353,31 +364,6 @@ let multiTagSelector;
 
 document.addEventListener('DOMContentLoaded', function() {
     multiTagSelector = new MultiTagSelector();
-
-    const txtFilterTags = document.getElementById('txtTagFilter');
-
-        txtFilterTags.addEventListener('input', (event) => {
-            const filter = event.target.value.toLowerCase(); // Add toLowerCase for case-insensitive
-            const videoCards = document.querySelectorAll('.outer-card');
-
-            const topLink = document.querySelector('.top-link');
-
-            if (filter) {
-                topLink.style.display = 'none'; // Hide "top" link when filtering
-            } else {
-                topLink.style.display = 'inline'; // Show "top" link when not filtering
-            }
-
-            videoCards.forEach(card => {
-                const tagName = card.getAttribute('data-tagname');
-
-                if (tagName && tagName.toLowerCase().includes(filter)) {
-                    card.classList.remove('d-none');
-                } else {
-                    card.classList.add('d-none');
-                }
-            });
-        });
 });
 
 function addTagToSelection(tagId, tagName) {

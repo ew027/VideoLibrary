@@ -87,3 +87,26 @@ a.video-link {
         padding: 0.5rem;
     }
 }
+
+/* Search form styling */
+.navbar .input-group {
+    width: 250px;
+}
+
+@media (max-width: 768px) {
+    .navbar .input-group {
+        width: 100%;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .navbar .d-flex {
+        width: 100%;
+    }
+}
+
+/* Search input focus styling */
+.navbar .form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}

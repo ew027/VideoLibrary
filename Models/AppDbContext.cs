@@ -15,7 +15,7 @@ namespace VideoLibrary.Models
         public DbSet<GalleryTag> GalleryTags { get; set; }
         public DbSet<LogEntry> LogEntries { get; set; }
         public DbSet<Playlist> Playlists { get; set; }
-
+        public DbSet<Content> Contents { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

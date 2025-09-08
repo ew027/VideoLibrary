@@ -1,0 +1,54 @@
+﻿@model VideoLibrary.Models.Content
+
+@{
+    ViewData["Title"] = "Edit Content";
+}
+
+<h1>Edit Content</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Save" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="DateCreated" />
+
+            <div class="form-group mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="ContentText" class="form-label"></label>
+                <textarea asp-for="ContentText" class="form-control" rows="15"
+                          placeholder="Enter your content here. HTML is allowed."></textarea>
+                <div class="form-text">You can use HTML tags in the content.</div>
+                <span asp-validation-for="ContentText" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <small class="text-muted">
+                    Created: @Html.DisplayFor(model => model.DateCreated)
+                    @if (Model.DateLastUpdated != default)
+                    {
+                        <span> | Last Updated: @Html.DisplayFor(model => model.DateLastUpdated)</span>
+                    }
+                </small>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Save Changes" class="btn btn-primary me-2" />
+                <a asp-action="View" asp-route-id="@Model.Id" class="btn btn-secondary me-2">Cancel</a>
+                <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

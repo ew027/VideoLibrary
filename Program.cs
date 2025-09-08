@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using FFMpegCore;
+using Microsoft.VisualBasic;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -110,6 +111,7 @@ try
     await AddGalleryThumbnailColumn(context);
     await AddLogEntryDbStructure(context);
     await AddPlaylistDbStructure(context);
+    await AddContentsDbStructure(context);
 }
 catch (Exception ex)
 {
@@ -301,5 +303,26 @@ static async Task AddPlaylistDbStructure(AppDbContext context)
 
         var logger = context.GetService<ILogger<Program>>();
         logger?.LogInformation("Added logentries tables to existing database");
+    }
+}
+
+static async Task AddContentsDbStructure(AppDbContext context)
+{
+    try
+    {
+        // Try to query the Contents table to see if it exists
+        await context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM Contents LIMIT 1");
+    }
+    catch (Exception)
+    {
+        // Table doesn't exist, create it
+        await context.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE Contents (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Title TEXT NOT NULL,
+                ContentText TEXT,
+                DateCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                DateLastUpdated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )");
     }
 }

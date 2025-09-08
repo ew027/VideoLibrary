@@ -21,7 +21,33 @@
     </ol>
 </nav>
 
-<h2>@Model.Video.Title</h2>
+<div class="d-flex align-items-center mb-3" id="titleContainer">
+    <!-- Display Mode -->
+    <div id="titleDisplay" class="d-flex align-items-center">
+        <h2 class="mb-0 me-2">@Model.Video.Title</h2>
+        <button type="button" class="btn btn-link p-0 ms-2" id="editTitleBtn" title="Edit title">
+            <i class="bi bi-pencil text-muted"></i>
+        </button>
+    </div>
+
+    <!-- Edit Mode (initially hidden) -->
+    <form id="titleEditForm" class="d-none align-items-center w-100" action="/Video/EditTitle" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Video.Id" />
+        <div class="flex-grow-1 me-2">
+            <input type="text" class="form-control" name="title" id="titleInput"
+                   value="@Model.Video.Title" maxlength="200" required />
+        </div>
+        <div class="btn-group" role="group">
+            <button type="submit" class="btn btn-success btn-sm" title="Save">
+                <i class="bi bi-check-lg"></i>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="cancelEditBtn" title="Cancel">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </form>
+</div>
 
 <div class="row">
     <div class="col-md-8">
@@ -492,6 +518,90 @@ document.addEventListener('keydown', function(e) {
         setCurrentTime('end');
     }
 });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const titleDisplay = document.getElementById('titleDisplay');
+        const titleEditForm = document.getElementById('titleEditForm');
+        const editTitleBtn = document.getElementById('editTitleBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const titleInput = document.getElementById('titleInput');
+            const originalTitle = '@Model.Video.Title';
+
+        // Enter edit mode
+        editTitleBtn.addEventListener('click', function() {
+            titleDisplay.classList.add('d-none');
+            titleDisplay.classList.remove('d-flex');
+            titleEditForm.classList.add('d-flex');
+            titleEditForm.classList.remove('d-none');
+            titleInput.focus();
+            titleInput.select();
+        });
+
+        // Cancel edit mode
+        cancelEditBtn.addEventListener('click', function() {
+            titleInput.value = originalTitle;
+            titleDisplay.classList.add('d-flex');
+            titleDisplay.classList.remove('d-none');
+            titleEditForm.classList.add('d-none');
+            titleEditForm.classList.remove('d-flex');
+        });
+
+        // Handle Enter key to submit
+        titleInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                titleEditForm.submit();
+            } else if (e.key === 'Escape') {
+                cancelEditBtn.click();
+            }
+        });
+
+        // Optional: Handle form submission with AJAX (prevents page reload)
+        titleEditForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(titleEditForm);
+
+            fetch('/Video/EditTitle', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Network response was not ok');
+            })
+            .then(data => {
+                if (data.success) {
+                    // Update the display with new title
+                    const h2Element = titleDisplay.querySelector('h2');
+                    h2Element.textContent = titleInput.value;
+
+                    // Exit edit mode
+                    titleDisplay.classList.add('d-flex');
+                    titleDisplay.classList.remove('d-none');
+                    titleEditForm.classList.add('d-none');
+                    titleEditForm.classList.remove('d-flex');
+
+                    // Optional: Show success message
+                    showToast('Title updated successfully!', 'success');
+                } else {
+                    showToast(data.message || 'Error updating title', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error updating title', 'error');
+            });
+        });
+
+        // Optional: Toast notification function
+        function showToast(message, type) {
+            // You can implement this using Bootstrap toast or any notification library
+            // For now, just use alert
+            alert(message);
+        }
+    });
 </script>
 
 <script>
@@ -761,5 +871,19 @@ document.addEventListener('keydown', function(e) {
 
     .input-group-sm .btn {
         padding: 0.25rem 0.5rem;
+    }
+
+    #editTitleBtn {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    #titleDisplay:hover #editTitleBtn {
+        opacity: 1;
+    }
+
+    #titleInput {
+        font-size: 1.5rem;
+        font-weight: 500;
     }
 </style>
