@@ -5,8 +5,7 @@ namespace VideoLibrary.Models
     public class SavedPlaylistViewModel
     {
         public Playlist Playlist { get; set; } = null!;
-        public List<Video> Videos { get; set; } = new();
-        public int VideoCount => Videos.Count;
+        public int VideoCount => Playlist.VideoCount();
     }
 
     public class SavedPlaylistListViewModel

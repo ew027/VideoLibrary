@@ -52,7 +52,17 @@
                         {
                             <p class="card-text text-muted small mb-2">@playlist.Description</p>
                         }
-
+                        @if (playlist.VideoCount() > 0)
+                        {
+                            <img src="@Url.Action("SmallThumbnail", "Video", new { id = playlist.FirstVideoId() })"
+                                 class="card-img-top video-thumbnail" alt="Playlist thumbnail">
+                        }
+                        else
+                        {
+                            <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <span class="text-muted">No thumbnail</span>
+                            </div>
+                        }
                         <div class="playlist-stats mb-3">
                             <div class="row text-center">
                                 <div class="col-4">
@@ -78,7 +88,13 @@
                                 </div>
                             </div>
                         </div>
-
+                        <div class="d-flex mb-3">
+                            @foreach (var playlistTag in playlist.PlaylistTags)
+                            {
+                                <a href="@Url.Action("ByTag", "Video", new { tagId = playlistTag.Tag.Id })"
+                                   class="badge bg-primary tag-badge">@playlistTag.Tag.Name</a>
+                            }
+                        </div>
                         <div class="playlist-meta mb-3">
                             <small class="text-muted">
                                 Created: @playlist.DateCreated.ToString("MMM dd, yyyy")<br>

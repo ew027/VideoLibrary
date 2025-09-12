@@ -15,6 +15,8 @@ namespace VideoLibrary.Models
         public DbSet<GalleryTag> GalleryTags { get; set; }
         public DbSet<LogEntry> LogEntries { get; set; }
         public DbSet<Playlist> Playlists { get; set; }
+
+        public DbSet<PlaylistTag> PlaylistTags { get; set; }
         public DbSet<Content> Contents { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -48,6 +50,22 @@ namespace VideoLibrary.Models
                 .HasOne(gt => gt.Tag)
                 .WithMany(g => g.GalleryTags)
                 .HasForeignKey(gt => gt.TagId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Playlist-Tag relationship
+            modelBuilder.Entity<PlaylistTag>()
+                .HasKey(pt => new { pt.PlaylistId, pt.TagId });
+
+            modelBuilder.Entity<PlaylistTag>()
+                .HasOne(pt => pt.Playlist)
+                .WithMany(p => p.PlaylistTags)
+                .HasForeignKey(pt => pt.PlaylistId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PlaylistTag>()
+                .HasOne(pt => pt.Tag)
+                .WithMany(t => t.PlaylistTags)
+                .HasForeignKey(pt => pt.TagId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

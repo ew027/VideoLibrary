@@ -2,6 +2,7 @@
 {
     public class PlaylistPlayViewModel
     {
+        public int PlaylistId { get; set; }
         public int? TagId { get; set; }
         public string TagName { get; set; } = string.Empty;
         public List<Video> Videos { get; set; } = new();

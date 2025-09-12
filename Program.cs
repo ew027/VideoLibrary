@@ -112,6 +112,7 @@ try
     await AddLogEntryDbStructure(context);
     await AddPlaylistDbStructure(context);
     await AddContentsDbStructure(context);
+    await AddPlaylisTagsDbStructure(context);
 }
 catch (Exception ex)
 {
@@ -324,5 +325,35 @@ static async Task AddContentsDbStructure(AppDbContext context)
                 DateCreated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 DateLastUpdated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             )");
+    }
+}
+
+static async Task AddPlaylisTagsDbStructure(AppDbContext context)
+{
+    // Check if Galleries table exists, if not create gallery structure
+    try
+    {
+        await context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM PlaylistTags LIMIT 1");
+    }
+    catch
+    {
+        // Create gallery tables
+        await context.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE Playlists ADD COLUMN ThumbnailPath TEXT;
+
+            CREATE TABLE PlaylistTags (
+                PlaylistId INTEGER NOT NULL,
+                TagId INTEGER NOT NULL,
+                PRIMARY KEY (PlaylistId, TagId),
+                FOREIGN KEY (PlaylistId) REFERENCES Playlists(Id) ON DELETE CASCADE,
+                FOREIGN KEY (TagId) REFERENCES Tags(Id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IX_PlaylistTags_PlaylistId ON PlaylistTags(PlaylistId);
+            CREATE INDEX IX_PlaylistTags_TagId ON PlaylistTags(TagId);
+        ");
+
+        var logger = context.GetService<ILogger<Program>>();
+        logger?.LogInformation("Added gallery tables to existing database");
     }
 }

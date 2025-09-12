@@ -14,5 +14,7 @@ namespace VideoLibrary.Models
         public virtual ICollection<VideoTag> VideoTags { get; set; } = new List<VideoTag>();
 
         public virtual ICollection<GalleryTag> GalleryTags { get; set; } = new List<GalleryTag>();
+
+        public virtual ICollection<PlaylistTag> PlaylistTags { get; set; } = new List<PlaylistTag>();
     }
 }

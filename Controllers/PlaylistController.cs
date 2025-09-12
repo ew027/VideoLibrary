@@ -77,13 +77,32 @@ namespace VideoLibrary.Controllers
 
         public async Task<IActionResult> Custom(int tagId, string videoIds, string order)
         {
-            // .Where(v => videoIds.Contains(v.Id))
-            var sortOrder = (order == "order") ? "id" : "RANDOM()";
-            var sql = $"select * from Videos where Id in ({videoIds}) order by {sortOrder}";
+            // Validate and parse video IDs
+            var selectedVideoIds = ParseVideoIds(videoIds);
 
+            if (!selectedVideoIds.Any())
+            {
+                TempData["ErrorMessage"] = "No valid video IDs provided";
+                return RedirectToAction("ByTag", "Video", new { tagId });
+            }
+
+            // Get selected videos
             var videos = await _context.Videos
-                .FromSqlRaw(sql)
+                .Where(v => selectedVideoIds.Contains(v.Id))
+                .Include(v => v.VideoTags)
+                .ThenInclude(vt => vt.Tag)
                 .ToListAsync();
+
+            // Order the videos to match the selection order or shuffle
+            if (order == "shuffle")
+            {
+                videos = videos.OrderBy(v => Guid.NewGuid()).ToList();
+            }
+            else
+            {
+                // Maintain the order from the original selection
+                videos = videos.OrderBy(v => selectedVideoIds.IndexOf(v.Id)).ToList();
+            }
 
             if (!videos.Any())
             {
@@ -189,9 +208,12 @@ namespace VideoLibrary.Controllers
             return Json(videos);
         }
 
+        // get all the saved playlists to display
         public async Task<IActionResult> Saved()
         {
             var savedPlaylists = await _context.Playlists
+                .Include(v => v.PlaylistTags)
+                .ThenInclude(vt => vt.Tag)
                 .OrderByDescending(p => p.DateLastPlayed)
                 .ToListAsync();
 
@@ -199,18 +221,9 @@ namespace VideoLibrary.Controllers
 
             foreach (var playlist in savedPlaylists)
             {
-                var videoIds = playlist.GetVideoIdList();
-                var videos = await _context.Videos
-                    .Where(v => videoIds.Contains(v.Id))
-                    .ToListAsync();
-
-                // Maintain the original order
-                videos = videos.OrderBy(v => videoIds.IndexOf(v.Id)).ToList();
-
                 playlistViewModels.Add(new SavedPlaylistViewModel
                 {
-                    Playlist = playlist,
-                    Videos = videos
+                    Playlist = playlist
                 });
             }
 
@@ -254,6 +267,7 @@ namespace VideoLibrary.Controllers
 
             var playlist = new PlaylistPlayViewModel
             {
+                PlaylistId = savedPlaylist.Id,
                 TagName = savedPlaylist.Name,
                 Videos = videos,
                 CurrentIndex = 0,
@@ -284,6 +298,30 @@ namespace VideoLibrary.Controllers
                 return View(model);
             }
 
+            // Validate and parse video IDs
+            var selectedVideoIds = ParseVideoIds(model.VideoIds);
+
+            if (!selectedVideoIds.Any())
+            {
+                TempData["ErrorMessage"] = "No valid video IDs provided";
+                return View(model);
+            }
+
+            // Get selected videos
+            var videos = await _context.Videos
+                .Where(v => selectedVideoIds.Contains(v.Id))
+                .Include(v => v.VideoTags)
+                .ThenInclude(vt => vt.Tag)
+                .ToListAsync();
+
+            // now get a unique list of tags from these videos
+            var uniqueTags = videos
+                .SelectMany(v => v.VideoTags)
+                .Select(vt => vt.Tag)
+                .DistinctBy(t => t.Id)
+                .OrderBy(t => t.Name)
+                .ToList();
+
             var savedPlaylist = new Playlist
             {
                 Name = model.Name,
@@ -291,10 +329,22 @@ namespace VideoLibrary.Controllers
                 VideoIds = model.VideoIds,
                 IsShuffled = model.IsShuffled,
                 DateCreated = DateTime.Now,
-                DateLastPlayed = DateTime.Now
+                DateLastPlayed = DateTime.Now,
+                ThumbnailPath = videos.FirstOrDefault(v => !string.IsNullOrEmpty(v.ThumbnailPath))?.ThumbnailPath ?? string.Empty
             };
 
             _context.Playlists.Add(savedPlaylist);
+            await _context.SaveChangesAsync();
+
+            foreach (var tag in uniqueTags)
+            {
+                savedPlaylist.PlaylistTags.Add(new PlaylistTag
+                {
+                    TagId = tag.Id,
+                    Playlist = savedPlaylist
+                });
+            }
+
             await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Play), new { id = savedPlaylist.Id });
@@ -333,6 +383,35 @@ namespace VideoLibrary.Controllers
             }
 
             return RedirectToAction("Details", "Video", new { id = videoId });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateOrder(int playlistId, string videoIds)
+        {
+            var playlist = await _context.Playlists.FindAsync(playlistId);
+            if (playlist != null)
+            {
+                playlist.VideoIds = videoIds;
+
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = "Playlist updated";
+            }
+
+            return RedirectToAction("Play", new { id = playlistId });
+        }
+
+        private List<int> ParseVideoIds(string videoIds)
+        {
+            if (string.IsNullOrWhiteSpace(videoIds))
+                return new List<int>();
+
+            return videoIds.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(id => int.TryParse(id.Trim(), out var parsed) ? parsed : (int?)null)
+                .Where(id => id.HasValue)
+                .Select(id => id.Value)
+                .Distinct()
+                .ToList();
         }
     }
 }
