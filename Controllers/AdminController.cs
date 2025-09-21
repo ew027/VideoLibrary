@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VideoLibrary.Models;
+using VideoLibrary.Models.ViewModels;
 using VideoLibrary.Services;
 
 namespace VideoLibrary.Controllers

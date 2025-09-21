@@ -1,4 +1,5 @@
-﻿@model VideoLibrary.Models.TagWithContentViewModel
+﻿@using VideoLibrary.Models.ViewModels
+@model TagWithContentViewModel
 
 @{
     ViewData["Title"] = $"Videos tagged: {Model.Tag.Name}";
@@ -11,33 +12,45 @@
     </ol>
 </nav>
 
-<h2>@Model.Tag.Name videos</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>@Model.Tag.Name videos</h2>
+    <div class="d-flex align-items-center gap-2">
+        @if (Model.AllowArchiving)
+        {
+            <form asp-action="SetArchivedStatus" asp-controller="Video" class="d-inline">
+                <input type="hidden" name="id" value="@Model.Tag.Id">
+                <input type="hidden" name="isArchived" value="@(Model.Tag.IsArchived ? "False" : "True")">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-archive"></i> @(Model.Tag.IsArchived ? "Unarchive" : "Archive")
+                </button>
+            </form>
+        }
+        <div class="btn-group">
+            <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-play-circle"></i> Create Playlist
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="#" onclick="showPlaylistModal()">
+                        <i class="bi bi-check2-square"></i> Select Videos for Playlist
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="@Url.Action("Tag", "Playlist", new { tagId = Model.Tag.Id })">
+                        <i class="bi bi-play-circle"></i> Play All in Order
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="@Url.Action("Tag", "Playlist", new { tagId = Model.Tag.Id })?shuffle=true">
+                        <i class="bi bi-shuffle"></i> Play All Shuffled
+                    </a>
+                </li>
+            </ul>
+        </div>
 
-
-    <div class="btn-group">
-        <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown">
-            <i class="bi bi-play-circle"></i> Create Playlist
-        </button>
-        <ul class="dropdown-menu">
-            <li>
-                <a class="dropdown-item" href="#" onclick="showPlaylistModal()">
-                    <i class="bi bi-check2-square"></i> Select Videos for Playlist
-                </a>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-                <a class="dropdown-item" href="@Url.Action("Tag", "Playlist", new { tagId = Model.Tag.Id })">
-                    <i class="bi bi-play-circle"></i> Play All in Order
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item" href="@Url.Action("Tag", "Playlist", new { tagId = Model.Tag.Id })?shuffle=true">
-                    <i class="bi bi-shuffle"></i> Play All Shuffled
-                </a>
-            </li>
-        </ul>
     </div>
-
+</div>
 
 @if (Model.Videos.Any())
 {
@@ -118,6 +131,46 @@
     </div>
 }
 
+@if (Model.Playlists.Any())
+{
+    <h3>Playlists</h3>
+    <div class="row">
+        @foreach (var playlist in Model.Playlists)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card video-card">
+                    <a href="@Url.Action("Play", "Playlist", new { id = playlist.Id })" class="video-link">
+                        @if (playlist.VideoCount() > 0)
+                        {
+                            <img src="@Url.Action("SmallThumbnail", "Video", new { id = playlist.FirstVideoId() })"
+                                 class="card-img-top video-thumbnail" alt="Playlist thumbnail">
+                        }
+                        else
+                        {
+                            <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <span class="text-muted">Generating Thumbnail...</span>
+                            </div>
+                        }
+                    </a>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="video-info"><b>@playlist.Name</b></span>
+                            <span class="video-info">@playlist.VideoCount() videos</span>
+                        </div>
+                        <div class="d-flex mb-2">
+                            @foreach (var videoTag in playlist.PlaylistTags)
+                            {
+                                <a href="@Url.Action("ByTag", "Video", new { tagId = videoTag.Tag.Id })"
+                                   class="badge bg-primary tag-badge">@videoTag.Tag.Name</a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
 @if (Model.Galleries.Any())
 {
         <h3>Galleries</h3>
@@ -152,6 +205,27 @@
                     </div>
         }
         </div>
+}
+
+@if (Model.Contents.Any())
+{
+    <h3>Content items</h3>
+    <div class="row">
+        @foreach (var content in Model.Contents)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card video-card">
+                    <a href="@Url.Action("View", "Content", new { id = content.Id })" class="video-link">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title">@content.Title</h5>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
 }
 
 <a href="@Url.Action("Index", "Home")" class="btn btn-secondary">Back to Tags</a>

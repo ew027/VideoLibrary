@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using VideoLibrary.Models;
+using VideoLibrary.Models.ViewModels;
 
 namespace VideoLibrary.Controllers
 {

@@ -56,6 +56,12 @@ builder.WebHost.ConfigureKestrel(options =>
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// In Program.cs - Update your database configuration
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .UseSnakeCaseNamingConvention());
+
+/*
 // Add Entity Framework
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -68,7 +74,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         options.EnableDetailedErrors(false);
     }
 });
-
+*/
 // Add background services
 //builder.Services.AddHostedService<VideoScanService>();
 builder.Services.AddScoped<ThumbnailService>();
@@ -93,7 +99,7 @@ if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("Data S
         Directory.CreateDirectory(dbDirectory);
     }
 }
-
+/*
 // Create database if it doesn't exist
 try
 {
@@ -113,6 +119,8 @@ try
     await AddPlaylistDbStructure(context);
     await AddContentsDbStructure(context);
     await AddPlaylisTagsDbStructure(context);
+    await AddTranscriptionDbStructure(context);
+    await AddTagArchivedColumn(context);
 }
 catch (Exception ex)
 {
@@ -120,7 +128,7 @@ catch (Exception ex)
     logger.LogError(ex, "An error occurred while initializing the database");
     throw;
 }
-
+*/
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -355,5 +363,61 @@ static async Task AddPlaylisTagsDbStructure(AppDbContext context)
 
         var logger = context.GetService<ILogger<Program>>();
         logger?.LogInformation("Added gallery tables to existing database");
+    }
+}
+
+static async Task AddTranscriptionDbStructure(AppDbContext context)
+{
+    // check if Transcriptions table exists, if not create
+    try
+    {
+        await context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM Transcriptions LIMIT 1");
+    }
+    catch
+    {
+        var createTableSql = @"
+            CREATE TABLE Transcriptions (
+                Id INTEGER NOT NULL CONSTRAINT PK_Transcriptions PRIMARY KEY AUTOINCREMENT,
+                VideoId INTEGER NOT NULL,
+                ContentId INTEGER,
+                Status INTEGER NOT NULL,
+                DateRequested TEXT NOT NULL DEFAULT (datetime('now')),
+                DateCompleted TEXT
+            );
+
+            CREATE INDEX IX_Transcriptions_VideoId 
+            ON Transcriptions (VideoId);
+
+            CREATE INDEX IX_Transcriptions_Status 
+            ON Transcriptions (Status);
+
+            CREATE INDEX IX_Transcriptions_DateRequested 
+            ON Transcriptions (DateRequested);
+        ";
+
+        await context.Database.ExecuteSqlRawAsync(createTableSql);
+
+        var logger = context.GetService<ILogger<Program>>();
+        logger?.LogInformation("Added transcription table to existing database");
+    }
+}
+
+static async Task AddTagArchivedColumn(AppDbContext context)
+{
+    try
+    {
+        // Try to query a new column - if it fails, we need to add the columns
+        await context.Database.ExecuteSqlRawAsync("SELECT IsArchived FROM Tags LIMIT 1");
+    }
+    catch
+    {
+        // Columns don't exist, add them
+        await context.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE Tags ADD COLUMN IsArchived INTEGER;
+            UPDATE Tags SET IsArchived=0;
+        ");
+
+        var logger = context.GetService<ILogger<Program>>();
+        logger?.LogInformation("Added new gallery columns to existing database");
     }
 }

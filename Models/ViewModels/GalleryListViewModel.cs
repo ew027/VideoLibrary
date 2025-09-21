@@ -1,4 +1,4 @@
-﻿namespace VideoLibrary.Models
+﻿namespace VideoLibrary.Models.ViewModels
 {
     public class GalleryListViewModel
     {
@@ -26,8 +26,13 @@
         public List<Video> Videos { get; set; } = new();
         public List<Video> ClipVideos { get; set; } = new();
         public List<Gallery> Galleries { get; set; } = new();
+        public List<Playlist> Playlists { get; set; } = new();
+        public List<Content> Contents { get; set; } = new();
+        public bool AllowArchiving { get; set; }
         public int TotalVideos => Videos.Count;
+        public int TotalPlaylists => Playlists.Count;
         public int TotalGalleries => Galleries.Count;
-        public int TotalItems => TotalVideos + TotalGalleries;
+        public int TotalContents => Contents.Count;
+        public int TotalItems => TotalVideos + TotalGalleries + TotalPlaylists + TotalContents;
     }
 }

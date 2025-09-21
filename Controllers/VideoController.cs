@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using VideoLibrary.Models;
+using VideoLibrary.Models.ViewModels;
 using VideoLibrary.Services;
 
 namespace VideoLibrary.Controllers
@@ -46,20 +47,48 @@ namespace VideoLibrary.Controllers
                 return NotFound();
             }
 
+            var transcription = await _context.Transcriptions
+                .FirstOrDefaultAsync(t => t.VideoId == id);
+
             VideoViewModel viewModel = null;
 
             if (tagId.HasValue && video.VideoTags.Any(x => x.TagId == tagId.Value))
             {
-                viewModel = new VideoViewModel { Video = video, Tag = video.VideoTags.FirstOrDefault(x => x.TagId == tagId.Value)!.Tag };
+                viewModel = new VideoViewModel { Video = video, Transcription = transcription, Tag = video.VideoTags.FirstOrDefault(x => x.TagId == tagId.Value)!.Tag };
             }
             else
             {
-                viewModel = new VideoViewModel { Video = video };
+                viewModel = new VideoViewModel { Video = video, Transcription = transcription };
             }
 
             viewModel.Playlists = await _context.Playlists.ToListAsync();
 
             return View(viewModel);
+        }
+
+        public async Task<IActionResult> RequestTranscript(int id)
+        {
+            // check there is not already a transcription
+            var transcription = await _context.Transcriptions
+                .FirstOrDefaultAsync(t => t.VideoId == id);
+
+            if (transcription != null)
+            {
+                TempData["ErrorMessage"] = "Transcription already exists for this video.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            transcription = new Transcription
+            {
+                VideoId = id,
+                Status = TranscriptionStatus.Pending,
+                DateRequested = DateTime.Now
+            };
+
+            _context.Transcriptions.Add(transcription);
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "Transcription request submitted successfully.";
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         public async Task<IActionResult> ByTag(int tagId)
@@ -105,9 +134,28 @@ namespace VideoLibrary.Controllers
                 .OrderBy(g => g.Name)
                 .ToListAsync();
 
+            // Get playlists for this tag
+            var playlists = await _context.Playlists
+                .Include(g => g.PlaylistTags)
+                .ThenInclude(gt => gt.Tag)
+                .Where(g => g.PlaylistTags.Any(gt => gt.TagId == tagId))
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+
+            // Get playlists for this tag
+            var contents = await _context.Contents
+                .Include(g => g.ContentTags)
+                .ThenInclude(gt => gt.Tag)
+                .Where(g => g.ContentTags.Any(gt => gt.TagId == tagId))
+                .OrderBy(g => g.Title)
+                .ToListAsync();
+
             tagViewModel.Galleries = galleries;
             tagViewModel.Videos = videosWithoutClips;
             tagViewModel.ClipVideos = videosWithClips;
+            tagViewModel.Playlists = playlists;
+            tagViewModel.Contents = contents;
+            tagViewModel.AllowArchiving = true;
             tagViewModel.Tag = tag;
 
             return View(tagViewModel);
@@ -137,6 +185,22 @@ namespace VideoLibrary.Controllers
                 .OrderBy(g => g.Name)
                 .ToListAsync();
 
+            // Get playlists for this tag
+            var playlists = await _context.Playlists
+                .Include(g => g.PlaylistTags)
+                .ThenInclude(gt => gt.Tag)
+                .Where(g => g.PlaylistTags.Any(gt => tagIdList.Contains(gt.TagId)))
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+
+            // Get playlists for this tag
+            var contents = await _context.Contents
+                .Include(g => g.ContentTags)
+                .ThenInclude(gt => gt.Tag)
+                .Where(g => g.ContentTags.Any(gt => tagIdList.Contains(gt.TagId)))
+                .OrderBy(g => g.Title)
+                .ToListAsync();
+
             // Create a virtual tag for display
             var tagNames = tags.Select(t => t.Name).ToList();
             var displayName = tagNames.Count > 3
@@ -153,7 +217,10 @@ namespace VideoLibrary.Controllers
             {
                 Tag = virtualTag,
                 Videos = videos,
-                Galleries = galleries
+                Galleries = galleries,
+                Playlists = playlists,
+                Contents = contents,
+                AllowArchiving = false
             };
 
             return View("ByTag", viewModel);
@@ -194,6 +261,21 @@ namespace VideoLibrary.Controllers
                 _logger.LogError(ex, "Error updating video title for ID {VideoId}", id);
                 return Json(new { success = false, message = "An error occurred while updating the title" });
             }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SetArchivedStatus(int id, bool isArchived)
+        {
+            var tag = await _context.Tags.FindAsync(id);
+
+            if (tag is not null && tag.IsArchived != isArchived)
+            {
+                tag.IsArchived = isArchived;
+
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction("ByTag", new { tagId = id });
         }
 
         private List<int> ParseTagIds(string tagIds)

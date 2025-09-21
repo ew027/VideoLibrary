@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace VideoLibrary.Models
+namespace VideoLibrary.Models.ViewModels
 {
     public class SavedPlaylistViewModel
     {

@@ -29,9 +29,13 @@ namespace VideoLibrary.Controllers
         {
             var tags = await _context.Tags
                 .Where(t => _context.VideoTags.Any(vt => vt.TagId == t.Id) ||
-                            _context.GalleryTags.Any(gt => gt.TagId == t.Id))
+                            _context.PlaylistTags.Any(vt => vt.TagId == t.Id) ||
+                            _context.GalleryTags.Any(gt => gt.TagId == t.Id) ||
+                            _context.ContentTags.Any(gt => gt.TagId == t.Id))
                 .Include(tag => tag.VideoTags)
                 .Include(tag => tag.GalleryTags)
+                .Include(tag => tag.PlaylistTags)
+                .Include(tag => tag.ContentTags)
                 .AsSplitQuery()
                 .OrderBy(t => t.Name)
                 .ToListAsync();
@@ -57,7 +61,9 @@ namespace VideoLibrary.Controllers
 
             var query = _context.Tags
                     .Where(t => _context.VideoTags.Any(vt => vt.TagId == t.Id) ||
-                                _context.GalleryTags.Any(gt => gt.TagId == t.Id));
+                                _context.GalleryTags.Any(gt => gt.TagId == t.Id) ||
+                                _context.PlaylistTags.Any(vt => vt.TagId == t.Id) ||
+                            _context.ContentTags.Any(gt => gt.TagId == t.Id));
 
             // Add case-insensitive search filter if search phrase is provided
             if (!string.IsNullOrEmpty(q))
@@ -68,6 +74,8 @@ namespace VideoLibrary.Controllers
             var tags = await query
                 .Include(tag => tag.VideoTags)
                 .Include(tag => tag.GalleryTags)
+                .Include(tag => tag.PlaylistTags)
+                .Include(tag => tag.ContentTags)
                 .AsSplitQuery()
                 .OrderBy(t => t.Name)
                 .ToListAsync();

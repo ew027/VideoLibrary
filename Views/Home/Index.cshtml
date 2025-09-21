@@ -104,21 +104,23 @@
         }
         <div class="col-md-3 mb-4 outer-card" data-tagname="@tag.Name">
             <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Id })" class="video-link">
-            <div class="card video-card">
-                @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
-                {
-                    <img src="@Url.Action("SmallThumbnail", "Home", new { id = tag.Id })"
-                         class="card-img-top video-thumbnail" alt="@tag.Name">
-                }
-                else
-                {
-                    <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
-                        <span class="text-muted">No Thumbnail</span>
-                    </div>
-                }
-                <div class="card-body">
-                    <h5 class="card-title">@tag.Name</h5>
-                    <p class="card-text">@tag.VideoTags.Count video@(tag.VideoTags.Count == 1 ? "" : "s"), @tag.GalleryTags.Count @(tag.GalleryTags.Count == 1 ? "gallery" : "galleries")</p>
+                <div class="card video-card">
+                    @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
+                    {
+                        <img src="@Url.Action("SmallThumbnail", "Home", new { id = tag.Id })"
+                        class="card-img-top video-thumbnail" alt="@tag.Name">
+                    }
+                    else
+                    {
+                        <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <span class="text-muted">No Thumbnail</span>
+                        </div>
+                    }
+                    <div class="card-body">
+                        <h5 class="card-title">@tag.Name</h5>
+                        <p class="card-text">
+                            @tag.GetSummary()
+                        </p>
                 </div>
             </div>
             </a>

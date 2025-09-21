@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using VideoLibrary.Models;
 using VideoLibrary.Services;
 using System.Collections.Generic;
+using VideoLibrary.Models.ViewModels;
 
 namespace VideoLibrary.Controllers
 {

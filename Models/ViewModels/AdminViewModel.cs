@@ -1,4 +1,4 @@
-﻿namespace VideoLibrary.Models
+﻿namespace VideoLibrary.Models.ViewModels
 {
     public class AdminDashboardViewModel
     {

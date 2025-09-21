@@ -18,5 +18,7 @@ namespace VideoLibrary.Models
 
         [Display(Name = "Date Last Updated")]
         public DateTime DateLastUpdated { get; set; }
+
+        public virtual ICollection<ContentTag> ContentTags { get; set; } = new List<ContentTag>();
     }
 }

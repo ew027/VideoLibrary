@@ -1,4 +1,5 @@
-﻿@model VideoLibrary.Models.SavedPlaylistListViewModel
+﻿@using VideoLibrary.Models.ViewModels
+@model SavedPlaylistListViewModel
 
 @{
     ViewData["Title"] = "Saved Playlists";
@@ -47,7 +48,7 @@
                                 </ul>
                             </div>
                         </div>
-
+                        <div class="mb-1">
                         @if (!string.IsNullOrEmpty(playlist.Description))
                         {
                             <p class="card-text text-muted small mb-2">@playlist.Description</p>
@@ -63,6 +64,7 @@
                                 <span class="text-muted">No thumbnail</span>
                             </div>
                         }
+                                </div>
                         <div class="playlist-stats mb-3">
                             <div class="row text-center">
                                 <div class="col-4">
@@ -88,27 +90,25 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="d-flex mb-3">
+                        <div class="d-flex flex-wrap mb-3">
                             @foreach (var playlistTag in playlist.PlaylistTags)
                             {
                                 <a href="@Url.Action("ByTag", "Video", new { tagId = playlistTag.Tag.Id })"
                                    class="badge bg-primary tag-badge">@playlistTag.Tag.Name</a>
                             }
                         </div>
-                        <div class="playlist-meta mb-3">
+                        <div class="playlist-meta mb-3 d-flex justify-content-between align-items-start">
                             <small class="text-muted">
                                 Created: @playlist.DateCreated.ToString("MMM dd, yyyy")<br>
                                 Last played: @playlist.DateLastPlayed.ToString("MMM dd, yyyy")
                             </small>
+                            <a href="@Url.Action("Play", "Playlist", new { id = playlist.Id })" class="btn btn-primary">
+                                <i class="bi bi-play-circle"></i> Play
+                            </a>
                         </div>
                     </div>
 
-                    <div class="card-footer bg-transparent">
-                        <a href="@Url.Action("Play", "Playlist", new { id = playlist.Id })"
-                           class="btn btn-primary w-100">
-                            <i class="bi bi-play-circle"></i> Play Playlist
-                        </a>
-                    </div>
+
                 </div>
             </div>
         }

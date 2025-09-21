@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VideoLibrary.Models;
+using VideoLibrary.Models.ViewModels;
 
 namespace VideoLibrary.Controllers
 {
@@ -9,10 +10,12 @@ namespace VideoLibrary.Controllers
     public class PlaylistController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<PlaylistController> _logger;
 
-        public PlaylistController(AppDbContext context)
+        public PlaylistController(AppDbContext context, ILogger<PlaylistController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<IActionResult> Tag(int tagId)
@@ -237,7 +240,11 @@ namespace VideoLibrary.Controllers
 
         public async Task<IActionResult> Play(int id)
         {
-            var savedPlaylist = await _context.Playlists.FindAsync(id);
+            var savedPlaylist = await _context.Playlists
+                .Include(v => v.PlaylistTags)
+                .ThenInclude(vt => vt.Tag)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (savedPlaylist == null)
             {
                 return NotFound();
@@ -271,7 +278,8 @@ namespace VideoLibrary.Controllers
                 TagName = savedPlaylist.Name,
                 Videos = videos,
                 CurrentIndex = 0,
-                IsRandom = savedPlaylist.IsShuffled
+                IsRandom = savedPlaylist.IsShuffled,
+                PlaylistTags = savedPlaylist.PlaylistTags.ToList()
             };
 
             return View("Tag", playlist);
@@ -399,6 +407,96 @@ namespace VideoLibrary.Controllers
             }
 
             return RedirectToAction("Play", new { id = playlistId });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateTags(int playlistId, string selectedTags, string newTags)
+        {
+            List<int> tagList = new List<int>();
+            List<string> newTagList = new List<string>();
+
+            if (!string.IsNullOrEmpty(selectedTags))
+            {
+                try
+                {
+                    tagList = selectedTags.Split(',').Select(t => Convert.ToInt32(t)).ToList();
+                }
+                catch (FormatException)
+                {
+                    return BadRequest("Invalid tag format in selected tags");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(newTags))
+            {
+                // Split new tags by comma, trim whitespace, and filter out empty strings
+                newTagList = newTags.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
+            }
+
+            var playlist = await _context.Playlists
+                .Include(v => v.PlaylistTags)
+                .FirstOrDefaultAsync(v => v.Id == playlistId);
+
+            if (playlist == null)
+            {
+                return NotFound();
+            }
+
+            // deal with any new tags
+            foreach (var newTag in newTagList)
+            {
+                var existingTag = await _context.Tags.FirstOrDefaultAsync(t => t.Name == newTag);
+                if (existingTag == null)
+                {
+                    existingTag = new Tag { Name = newTag };
+                    _context.Tags.Add(existingTag);
+                    await _context.SaveChangesAsync();
+                }
+
+                tagList.Add(existingTag.Id);
+            }
+
+            // Remove existing tags
+            _context.PlaylistTags.RemoveRange(playlist.PlaylistTags);
+
+            // Add new tags
+            foreach (var tagId in tagList)
+            {
+                playlist.PlaylistTags.Add(new PlaylistTag { PlaylistId = playlistId, TagId = tagId });
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction("Play", new { id = playlistId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditTitle(int id, string title)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    return Json(new { success = false, message = "Title cannot be empty" });
+                }
+
+                var playlist = await _context.Playlists.FindAsync(id);
+                if (playlist == null)
+                {
+                    return Json(new { success = false, message = "Playlist not found" });
+                }
+
+                playlist.Name = title.Trim();
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Title updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                // Log the exception
+                _logger.LogError(ex, "Error updating video title for ID {VideoId}", id);
+                return Json(new { success = false, message = "An error occurred while updating the title" });
+            }
         }
 
         private List<int> ParseVideoIds(string videoIds)

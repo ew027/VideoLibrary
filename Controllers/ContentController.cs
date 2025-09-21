@@ -54,7 +54,11 @@ namespace YourApp.Controllers
                 return NotFound();
             }
 
-            var content = await _context.Contents.FindAsync(id);
+            var content = await _context.Contents
+                .Include(x => x.ContentTags)
+                .ThenInclude(x => x.Tag)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
             if (content == null)
             {
                 return NotFound();
@@ -144,6 +148,66 @@ namespace YourApp.Controllers
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateTags(int contentId, string selectedTags, string newTags)
+        {
+            List<int> tagList = new List<int>();
+            List<string> newTagList = new List<string>();
+
+            if (!string.IsNullOrEmpty(selectedTags))
+            {
+                try
+                {
+                    tagList = selectedTags.Split(',').Select(t => Convert.ToInt32(t)).ToList();
+                }
+                catch (FormatException)
+                {
+                    return BadRequest("Invalid tag format in selected tags");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(newTags))
+            {
+                // Split new tags by comma, trim whitespace, and filter out empty strings
+                newTagList = newTags.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
+            }
+
+            var content = await _context.Contents
+                .Include(v => v.ContentTags)
+                .FirstOrDefaultAsync(v => v.Id == contentId);
+
+            if (content == null)
+            {
+                return NotFound();
+            }
+
+            // deal with any new tags
+            foreach (var newTag in newTagList)
+            {
+                var existingTag = await _context.Tags.FirstOrDefaultAsync(t => t.Name == newTag);
+                if (existingTag == null)
+                {
+                    existingTag = new Tag { Name = newTag };
+                    _context.Tags.Add(existingTag);
+                    await _context.SaveChangesAsync();
+                }
+
+                tagList.Add(existingTag.Id);
+            }
+
+            // Remove existing tags
+            _context.ContentTags.RemoveRange(content.ContentTags);
+
+            // Add new tags
+            foreach (var tagId in tagList)
+            {
+                content.ContentTags.Add(new ContentTag { ContentId = contentId, TagId = tagId });
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Edit), new { id = contentId });
         }
     }
 }

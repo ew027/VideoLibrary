@@ -1,4 +1,4 @@
-﻿namespace VideoLibrary.Models
+﻿namespace VideoLibrary.Models.ViewModels
 {
     public class PlaylistPlayViewModel
     {
@@ -10,6 +10,7 @@
         public bool IsRandom { get; set; } = false;
         public bool IsRecent { get; set; } = false;
         public bool IsAll { get; set; } = false;
+        public List<PlaylistTag> PlaylistTags { get; set; } = new();
 
         public Video? CurrentVideo => Videos.Count > CurrentIndex ? Videos[CurrentIndex] : null;
         public bool HasNext => CurrentIndex < Videos.Count - 1;

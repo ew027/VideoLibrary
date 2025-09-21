@@ -4,6 +4,11 @@ namespace VideoLibrary.Models
 {
     public class AppDbContext : DbContext
     {
+        static AppDbContext()
+        {
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+        }
+
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
@@ -18,6 +23,9 @@ namespace VideoLibrary.Models
 
         public DbSet<PlaylistTag> PlaylistTags { get; set; }
         public DbSet<Content> Contents { get; set; }
+        public DbSet<ContentTag> ContentTags { get; set; }
+
+        public DbSet<Transcription> Transcriptions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -66,6 +74,22 @@ namespace VideoLibrary.Models
                 .HasOne(pt => pt.Tag)
                 .WithMany(t => t.PlaylistTags)
                 .HasForeignKey(pt => pt.TagId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Content-Tag relationship
+            modelBuilder.Entity<ContentTag>()
+                .HasKey(ct => new { ct.ContentId, ct.TagId });
+
+            modelBuilder.Entity<ContentTag>()
+                .HasOne(ct => ct.Content)
+                .WithMany(c => c.ContentTags)
+                .HasForeignKey(ct => ct.ContentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ContentTag>()
+                .HasOne(ct => ct.Tag)
+                .WithMany(t => t.ContentTags)
+                .HasForeignKey(ct => ct.TagId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

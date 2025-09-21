@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using VideoLibrary.Models;
+using VideoLibrary.Models.ViewModels;
 
 namespace VideoLibrary.Controllers
 {
