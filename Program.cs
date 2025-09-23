@@ -88,47 +88,8 @@ builder.Services.AddSingleton<GalleryService>();
 
 var app = builder.Build();
 
-// Ensure data directory exists
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("Data Source="))
-{
-    var dbPath = connectionString.Split("Data Source=")[1].Split(';')[0];
-    var dbDirectory = Path.GetDirectoryName(dbPath);
-    if (!string.IsNullOrEmpty(dbDirectory))
-    {
-        Directory.CreateDirectory(dbDirectory);
-    }
-}
-/*
-// Create database if it doesn't exist
-try
-{
-    using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    context.Database.EnsureCreated();
+await ApplyDatabaseMigrations(app);
 
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Database initialized successfully");
-
-    // Add video metadata columns if they don't exist
-    await AddVideoMetadataColumnsIfNeeded(context);
-    await AddVideoNotesColumnIfNeeded(context);
-    await AddGalleryDbStructure(context);
-    await AddGalleryThumbnailColumn(context);
-    await AddLogEntryDbStructure(context);
-    await AddPlaylistDbStructure(context);
-    await AddContentsDbStructure(context);
-    await AddPlaylisTagsDbStructure(context);
-    await AddTranscriptionDbStructure(context);
-    await AddTagArchivedColumn(context);
-}
-catch (Exception ex)
-{
-    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "An error occurred while initializing the database");
-    throw;
-}
-*/
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -159,6 +120,89 @@ app.Lifetime.ApplicationStarted.Register(() =>
 });
 
 app.Run();
+
+static async Task ApplyDatabaseMigrations(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var environment = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        // Check if database exists and can connect
+        var canConnect = await context.Database.CanConnectAsync();
+        if (!canConnect)
+        {
+            logger.LogError("Cannot connect to database. Please check connection string.");
+            throw new InvalidOperationException("Database connection failed");
+        }
+
+        if (environment.IsProduction())
+        {
+            logger.LogInformation("Production environment detected. Checking for pending migrations...");
+
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            var appliedMigrations = await context.Database.GetAppliedMigrationsAsync();
+
+            logger.LogInformation($"Applied migrations: {appliedMigrations.Count()}");
+            logger.LogInformation($"Pending migrations: {pendingMigrations.Count()}");
+
+            if (pendingMigrations.Any())
+            {
+                logger.LogInformation("Applying pending migrations:");
+                foreach (var migration in pendingMigrations)
+                {
+                    logger.LogInformation($"  - {migration}");
+                }
+
+                logger.LogInformation("Starting database migration...");
+                await context.Database.MigrateAsync();
+                logger.LogInformation("Database migration completed successfully");
+            }
+            else
+            {
+                logger.LogInformation("Database is up to date. No migrations needed.");
+            }
+        }
+        else
+        {
+            // Development/Staging - just log the status, don't auto-migrate
+            var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+            var appliedMigrations = await context.Database.GetAppliedMigrationsAsync();
+
+            logger.LogInformation($"Development environment - Applied migrations: {appliedMigrations.Count()}");
+
+            if (pendingMigrations.Any())
+            {
+                logger.LogWarning($"Pending migrations detected ({pendingMigrations.Count()}). Run 'dotnet ef database update' to apply them:");
+                foreach (var migration in pendingMigrations)
+                {
+                    logger.LogWarning($"  - {migration}");
+                }
+            }
+            else
+            {
+                logger.LogInformation("Database is up to date.");
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while checking/applying database migrations");
+
+        // In production, you might want to fail fast
+        if (environment.IsProduction())
+        {
+            throw;
+        }
+
+        // In development, just warn and continue
+        logger.LogWarning("Continuing startup despite migration error in development environment");
+    }
+}
+
+#region Old manual migrations
 
 static async Task AddVideoMetadataColumnsIfNeeded(AppDbContext context)
 {
@@ -421,3 +465,5 @@ static async Task AddTagArchivedColumn(AppDbContext context)
         logger?.LogInformation("Added new gallery columns to existing database");
     }
 }
+
+#endregion

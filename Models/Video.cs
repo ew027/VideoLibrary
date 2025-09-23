@@ -30,6 +30,8 @@ namespace VideoLibrary.Models
         // New Notes property
         public string? Notes { get; set; }
 
+        public int ViewCount { get; set; } = 0;
+
         // Helper properties for display
         public string FileSizeFormatted => FileSizeBytes.HasValue ? FormatFileSize(FileSizeBytes.Value) : "Unknown";
         public string DurationFormatted => DurationSeconds.HasValue ? FormatDuration(DurationSeconds.Value) : "Unknown";

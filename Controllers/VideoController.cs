@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using VideoLibrary.Models;
 using VideoLibrary.Models.ViewModels;
 using VideoLibrary.Services;
@@ -46,6 +47,10 @@ namespace VideoLibrary.Controllers
             {
                 return NotFound();
             }
+
+            video.ViewCount++;
+
+            await _context.SaveChangesAsync();
 
             var transcription = await _context.Transcriptions
                 .FirstOrDefaultAsync(t => t.VideoId == id);
@@ -402,9 +407,9 @@ namespace VideoLibrary.Controllers
             return RedirectToAction(nameof(Details), new { id = videoId });
         }
 
-        public IActionResult Stream(int id)
+        public async Task<IActionResult> Stream(int id)
         {
-            var video = _context.Videos.Find(id);
+            var video = await _context.Videos.FindAsync(id);
             if (video == null || !System.IO.File.Exists(video.FilePath))
             {
                 return NotFound();

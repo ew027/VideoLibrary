@@ -20,14 +20,19 @@
     var letterIndex = 0;
 }
 <div class="d-flex justify-content-between align-items-start mb-2">
-    @if ((bool)ViewData["IsSearch"])
+    @if (ViewBag.IsSearch)
     {
         <h2>Search results for @ViewData["SearchQuery"]</h2>
     }
     else
     {
-        <h2>Video Tags</h2>
+        <h2>Tags</h2>
     }
+    <form method="get" action="@Url.Action("Index", "Home")">
+        <select asp-items="@ViewBag.ArchivedViewOptions" name="showArchived" class="form-select" onchange="this.form.submit()">
+
+        </select>
+    </form>
 </div>
 <div class="d-flex justify-content-between align-items-start mb-2">
     <div>
@@ -117,7 +122,15 @@
                         </div>
                     }
                     <div class="card-body">
-                        <h5 class="card-title">@tag.Name</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title">@tag.Name</h5>
+                            <div>
+                            @if (tag.IsArchived)
+                            {
+                                <span class="badge bg-warning">Archived</span>
+                            }
+                            </div>
+                        </div>
                         <p class="card-text">
                             @tag.GetSummary()
                         </p>

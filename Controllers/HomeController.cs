@@ -6,6 +6,8 @@ using VideoLibrary.Models;
 using VideoLibrary.Services;
 using System.IO;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Globalization;
 
 namespace VideoLibrary.Controllers
 {
@@ -25,9 +27,27 @@ namespace VideoLibrary.Controllers
             _imageCacheService = imageCacheService;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int showArchived = 0)
         {
-            var tags = await _context.Tags
+            if (showArchived == 0)
+            {
+                if (int.TryParse(HttpContext.Request.Cookies["showArchived"], out var cookieValue))
+                {
+                    showArchived = cookieValue;
+                }
+                else
+                {
+                    // no cookie so default to all
+                    showArchived = 1;
+                }
+            }
+            else
+            {
+                // specified value so set the cookie - should validate here but meh
+                HttpContext.Response.Cookies.Append("showArchived", showArchived.ToString());
+            }
+
+            var tags = _context.Tags
                 .Where(t => _context.VideoTags.Any(vt => vt.TagId == t.Id) ||
                             _context.PlaylistTags.Any(vt => vt.TagId == t.Id) ||
                             _context.GalleryTags.Any(gt => gt.TagId == t.Id) ||
@@ -37,16 +57,37 @@ namespace VideoLibrary.Controllers
                 .Include(tag => tag.PlaylistTags)
                 .Include(tag => tag.ContentTags)
                 .AsSplitQuery()
-                .OrderBy(t => t.Name)
-                .ToListAsync();
+                .OrderBy(t => t.Name);
+            //.ToListAsync();
+
+            List<Tag> filteredTags = null;
+
+            if (showArchived == 3)
+            {
+                filteredTags = await tags.Where(x => x.IsArchived == true).ToListAsync();
+            }
+            else if (showArchived == 2)
+            {
+                filteredTags = await tags.Where(x => x.IsArchived == false).ToListAsync();
+            }
+            else
+            {
+                filteredTags = await tags.ToListAsync();
+            }
 
             // Get the SQL without executing
             //var sql = tags.ToQueryString();
             //_logger.LogInformation("Generated SQL: {SQL}", sql);
 
-            ViewData["IsSearch"] = false;
+            ViewBag.IsSearch = false;
+            ViewBag.ArchivedViewOptions = new SelectList(new[]
+            {
+                new { Value = "1", Text = "All" },
+                new { Value = "2", Text = "Current" },
+                new { Value = "3", Text = "Archived" }
+            }, "Value", "Text", showArchived);
 
-            return View(tags);
+            return View(filteredTags);
         }
 
         public async Task<IActionResult> Search(string q)
@@ -68,21 +109,48 @@ namespace VideoLibrary.Controllers
             // Add case-insensitive search filter if search phrase is provided
             if (!string.IsNullOrEmpty(q))
             {
-                query = query.Where(t => EF.Functions.Like(t.Name, $"%{q}%"));
+                query = query.Where(t => EF.Functions.Like(t.Name.ToLower(), $"%{q.ToLower()}%"));
             }
 
-            var tags = await query
+            var tags = query
                 .Include(tag => tag.VideoTags)
                 .Include(tag => tag.GalleryTags)
                 .Include(tag => tag.PlaylistTags)
                 .Include(tag => tag.ContentTags)
                 .AsSplitQuery()
-                .OrderBy(t => t.Name)
-                .ToListAsync();
+                .OrderBy(t => t.Name);
 
-            ViewData["IsSearch"] = true;
+            var showArchived = 1;
 
-            return View("Index", tags);
+            if (int.TryParse(HttpContext.Request.Cookies["showArchived"], out var cookieValue))
+            {
+                showArchived = cookieValue;
+            }
+
+            List<Tag> filteredTags = null;
+
+            if (showArchived == 3)
+            {
+                filteredTags = await tags.Where(x => x.IsArchived == true).ToListAsync();
+            }
+            else if (showArchived == 2)
+            {
+                filteredTags = await tags.Where(x => x.IsArchived == false).ToListAsync();
+            }
+            else
+            {
+                filteredTags = await tags.ToListAsync();
+            }
+
+            ViewBag.IsSearch = true;
+            ViewBag.ArchivedViewOptions = new SelectList(new[]
+            {
+                new { Value = "1", Text = "All" },
+                new { Value = "2", Text = "Current" },
+                new { Value = "3", Text = "Archived" }
+            }, "Value", "Text", showArchived);
+
+            return View("Index", filteredTags);
         }
 
         public IActionResult SmallThumbnail(int id)
