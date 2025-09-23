@@ -34,6 +34,7 @@
             <thead class="table-dark">
                 <tr>
                     <th>Title</th>
+                    <th>Tags</th>
                     <th>Date Last Updated</th>
                     <th>Actions</th>
                 </tr>
@@ -46,6 +47,13 @@
                             <a asp-action="View" asp-route-id="@item.Id" class="text-decoration-none">
                                 @Html.DisplayFor(modelItem => item.Title)
                             </a>
+                        </td>
+                        <td>
+                            @foreach (var tag in item.ContentTags)
+                            {
+                                <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Tag.Id })"
+                                   class="badge bg-primary tag-badge">@tag.Tag.Name</a>
+                            }
                         </td>
                         <td>
                             @Html.DisplayFor(modelItem => item.DateLastUpdated)

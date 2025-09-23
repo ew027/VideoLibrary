@@ -1,34 +1,159 @@
-﻿@model VideoLibrary.Models.Content
+﻿@model VideoLibrary.Models.ViewModels.ContentViewModel
 
 @{
-    ViewData["Title"] = Model.Title;
+    ViewData["Title"] = Model.Content.Title;
 }
 
 <div class="mb-3">
-    <a asp-action="Index" class="btn btn-secondary">← Back to Content List</a>
-    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Edit</a>
+    @if (Model.Tag is null)
+    {
+        <a asp-action="Index" class="btn btn-secondary">← Back to Content List</a>
+    }
+    else
+    {
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Tags</a></li>
+                <li class="breadcrumb-item"><a href="@Url.Action("ByTag", "Video", new { tagId = Model.Tag.Id })">@Model.Tag.Name</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Content item</li>
+            </ol>
+        </nav>
+    }
 </div>
+<div class="row">
+    <div class="col-md-8">
+        <article>
+            <header class="mb-4">
+                <h2>@Html.DisplayFor(model => model.Content.Title)</h2>
+                <div>
+                    <a asp-action="Edit" asp-route-id="@Model.Content.Id" class="btn btn-sm btn-primary">Edit</a>
+                </div>
+                <p class="text-muted">
+                    <small>
+                        Last updated: @Html.DisplayFor(model => model.Content.DateLastUpdated)
+                        @if (Model.Content.DateCreated != Model.Content.DateLastUpdated)
+                        {
+                            <span> | Created: @Html.DisplayFor(model => model.Content.DateCreated)</span>
+                        }
+                    </small>
+                </p>
+            </header>
 
-<article>
-    <header class="mb-4">
-        <h1 class="display-4">@Html.DisplayFor(model => model.Title)</h1>
-        <p class="text-muted">
-            <small>
-                Last updated: @Html.DisplayFor(model => model.DateLastUpdated)
-                @if (Model.DateCreated != Model.DateLastUpdated)
-                {
-                    <span> | Created: @Html.DisplayFor(model => model.DateCreated)</span>
-                }
-            </small>
-        </p>
-    </header>
-
-    <div class="content-body">
-        @Html.Raw(Model.ContentText)
+            <div class="content-body">
+                @Html.Raw(Model.Content.ContentText)
+            </div>
+        </article>
     </div>
-</article>
-
-<div class="mt-5 pt-3 border-top">
-    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary me-2">Edit</a>
-    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Tags</h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="editTags()">
+                    <i class="bi bi-pencil"></i> Edit
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="tagsView">
+                    @if (Model.Content.ContentTags.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var contentTag in Model.Content.ContentTags)
+                            {
+                                <a href="@Url.Action("ByTag", "Video", new { tagId = contentTag.Tag.Id })"
+                                   class="badge bg-primary tag-badge">@contentTag.Tag.Name</a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No tags assigned</p>
+                    }
+                </div>
+                <div id="tagsEdit" style="display: none">
+                    <form asp-action="UpdateTags" method="post">
+                        <input type="hidden" name="contentId" value="@Model.Content.Id">
+                        <input type="hidden" name="selectedTags" id="existingTagIds" value="">
+                        <input type="hidden" name="newTags" id="newTagValues" value="">
+                        <div class="mb-3">
+                            <div class="tag-input-container">
+                                <div class="selected-tags" id="selectedTags"></div>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="tagSearch"
+                                           placeholder="Start typing to search tags..." autocomplete="off">
+                                </div>
+                                <div class="dropdown-menu" id="tagDropdown" style="display: none;"></div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-check"></i> Save Tags
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cancelTagsEdit()">
+                                <i class="bi bi-x"></i> Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script src="~/js/multiTagSelector.js"></script>
+<script>
+    // Global functions
+    let multiTagSelector;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        multiTagSelector = new MultiTagSelector({
+            tagSearchId: 'tagSearch',
+            tagDropdownId: 'tagDropdown',
+            tagData: @Html.Raw(Json.Serialize(Model.Content.ContentTags.Select(vt => new { id = vt.Tag.Id, name = vt.Tag.Name }))),
+            selectedTagsContainerId: 'selectedTags',
+        });
+    });
+
+    function addTagToSelection(tagId, tagName) {
+        multiTagSelector.selectTag(tagId, tagName);
+    }
+
+    async function editTags() {
+        document.getElementById('tagsView').style.display = 'none';
+        document.getElementById('tagsEdit').style.display = '';
+
+        multiTagSelector.renderSelectedTags();
+
+        if (multiTagSelector.allTags.length === 0) {
+            try {
+                const response = await fetch('/Video/GetAllTags');
+                if (response.ok) {
+                    multiTagSelector.allTags = await response.json();
+                } else {
+                    console.error('Failed to load tags:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error loading tags:', error);
+            }
+        }
+    }
+
+    function cancelTagsEdit() {
+        document.getElementById('tagsView').style.display = '';
+        document.getElementById('tagsEdit').style.display = 'none';
+    }
+</script>
+
+<style>
+    .tag-badge {
+        font-size: 0.9em;
+        padding: 0.4em 0.8em;
+        margin: 0.2em;
+        text-decoration: none;
+    }
+
+        .tag-badge:hover {
+            transform: scale(1.05);
+            transition: transform 0.2s;
+        }
+
+</style>

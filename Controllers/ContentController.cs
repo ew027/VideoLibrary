@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VideoLibrary.Models;
+using VideoLibrary.Models.ViewModels;
 
 namespace YourApp.Controllers
 {
@@ -17,6 +18,8 @@ namespace YourApp.Controllers
         public async Task<IActionResult> Index()
         {
             var contents = await _context.Contents
+                .Include(c => c.ContentTags)
+                .ThenInclude(ct => ct.Tag)
                 .OrderByDescending(c => c.DateLastUpdated)
                 .ToListAsync();
 
@@ -24,20 +27,31 @@ namespace YourApp.Controllers
         }
 
         // GET: Content/View/5
-        public async Task<IActionResult> View(int? id)
+        public async Task<IActionResult> View(int? id, int? tagId)
         {
             if (id == null)
             {
                 return NotFound();
             }
 
-            var content = await _context.Contents.FindAsync(id);
+            var content = await _context.Contents.Include(c => c.ContentTags)
+                                                 .ThenInclude(ct => ct.Tag)
+                                                 .FirstOrDefaultAsync(m => m.Id == id);
+
+
             if (content == null)
             {
                 return NotFound();
             }
 
-            return View(content);
+            Tag? tag = null;
+
+            if (tagId != null)
+            {
+                tag = await _context.Tags.FindAsync(tagId);
+            }
+
+            return View(new ContentViewModel { Content = content, Tag = tag });
         }
 
         // GET: Content/Create
@@ -207,7 +221,7 @@ namespace YourApp.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Edit), new { id = contentId });
+            return RedirectToAction(nameof(View), new { id = contentId });
         }
     }
 }

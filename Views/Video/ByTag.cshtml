@@ -215,7 +215,7 @@
         {
             <div class="col-md-4 mb-4">
                 <div class="card video-card">
-                    <a href="@Url.Action("View", "Content", new { id = content.Id })" class="video-link">
+                            <a href="@Url.Action("View", "Content", new { id = content.Id, tagId = Model.Tag.Id })" class="video-link">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h5 class="card-title">@content.Title</h5>
