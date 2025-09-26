@@ -78,7 +78,7 @@
                             <span class="video-info">@video.ResolutionFormatted, @video.DurationFormatted, <i class="bi bi-eye"></i> @video.ViewCount</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
+                            <div class="d-flex flex-wrap">
                                 @foreach (var videoTag in video.VideoTags)
                                 {
                                     <a href="@Url.Action("ByTag", "Video", new { tagId = videoTag.Tag.Id })"

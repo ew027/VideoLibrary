@@ -70,17 +70,22 @@
                         <strong>File Size:</strong> @Model.Video.FileSizeFormatted</p>
                 </div>
                 <div class="col-md-4">
-                    <div class="btn-group w-100" role="group">
-                        <button type="button" class="btn btn-outline-primary active" id="detailsBtn">
-                            <i class="bi bi-info-circle"></i> Details
-                        </button>
-                        @if (Model.Transcription is not null)
-                        {
+                    @if (Model.Transcription is not null && Model.Transcription.Status == TranscriptionStatus.Completed)
+                    {
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-outline-primary active" id="detailsBtn">
+                                <i class="bi bi-info-circle"></i> Video tools
+                            </button>
+
                             <button type="button" class="btn btn-outline-primary" id="transcriptionBtn">
                                 <i class="bi bi-file-text"></i> Transcript
                             </button>
-                        }
-                    </div>
+                        </div>
+                    }
+                    else
+                    {
+                                <div class="d-none"><span id="detailsBtn"></span><span id="transcriptionBtn"></span></div>
+                    }
                 </div>
             </div>
         </div>
@@ -769,6 +774,8 @@ document.addEventListener('keydown', function(e) {
                 console.error('Error loading tags:', error);
             }
         }
+
+        document.getElementById('tagSearch').focus();
     }
 
     function cancelTagsEdit() {

@@ -104,6 +104,8 @@
         // Clear search input
         document.getElementById(this.config.tagSearchId).value = '';
         document.getElementById(this.config.tagDropdownId).style.display = 'none';
+
+        document.getElementById(this.config.tagSearchId).focus();
     }
 
     removeTag(tagId) {
