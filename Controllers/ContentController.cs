@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using VideoLibrary.Models;
 using VideoLibrary.Models.ViewModels;
 
 namespace YourApp.Controllers
 {
+    [Authorize]
     public class ContentController : Controller
     {
         private readonly AppDbContext _context; // Replace with your actual DbContext class name
@@ -52,6 +54,23 @@ namespace YourApp.Controllers
             }
 
             return View(new ContentViewModel { Content = content, Tag = tag });
+        }
+
+        public async Task<IActionResult> EmbeddedView(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var content = await _context.Contents.FirstOrDefaultAsync(m => m.Id == id);
+
+            if (content == null)
+            {
+                return NotFound();
+            }
+
+            return PartialView("_EmbeddedView", content);
         }
 
         // GET: Content/Create

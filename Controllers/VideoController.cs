@@ -71,7 +71,7 @@ namespace VideoLibrary.Controllers
             return View(viewModel);
         }
 
-        public async Task<IActionResult> RequestTranscript(int id)
+        public async Task<IActionResult> RequestTranscript(int id, bool isXhr = false)
         {
             // check there is not already a transcription
             var transcription = await _context.Transcriptions
@@ -79,8 +79,15 @@ namespace VideoLibrary.Controllers
 
             if (transcription != null)
             {
-                TempData["ErrorMessage"] = "Transcription already exists for this video.";
-                return RedirectToAction(nameof(Details), new { id });
+                if (isXhr)
+                {
+                    return Ok();
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "Transcription already exists for this video.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
             }
 
             transcription = new Transcription
@@ -92,8 +99,16 @@ namespace VideoLibrary.Controllers
 
             _context.Transcriptions.Add(transcription);
             await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = "Transcription request submitted successfully.";
-            return RedirectToAction(nameof(Details), new { id });
+
+            if (isXhr)
+            {
+                return Ok();
+            }
+            else
+            {
+                TempData["SuccessMessage"] = "Transcription request submitted successfully.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
         }
 
         public async Task<IActionResult> ByTag(int tagId)
@@ -122,6 +137,7 @@ namespace VideoLibrary.Controllers
 
             // Get videos for this tag
             var videos = await _context.Videos
+                .Include(v => v.Transcription)
                 .Include(v => v.VideoTags)
                 .ThenInclude(vt => vt.Tag)
                 .Where(v => v.VideoTags.Any(vt => vt.TagId == tagId))

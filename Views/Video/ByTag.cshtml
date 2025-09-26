@@ -54,35 +54,48 @@
 
 @if (Model.Videos.Any())
 {
-        <div class="row">
+    <div class="row">
         @foreach (var video in Model.Videos)
         {
-                    <div class="col-md-4 mb-4">
-                        <div class="card video-card">
-                            <a href="@Url.Action("Details", "Video", new { id = video.Id, tagId = Model.Tag.Id })" class="video-link">
+            <div class="col-md-4 mb-4">
+                <div class="card video-card">
+                    <a href="@Url.Action("Details", "Video", new { id = video.Id, tagId = Model.Tag.Id })" class="video-link">
                         @if (!string.IsNullOrEmpty(video.ThumbnailPath))
                         {
-                                <img src="@Url.Action("SmallThumbnail", "Video", new { id = video.Id })"
-                                        class="card-img-top video-thumbnail" alt="@video.Title">
+                            <img src="@Url.Action("SmallThumbnail", "Video", new { id = video.Id })"
+                            class="card-img-top video-thumbnail" alt="@video.Title">
                         }
                         else
                         {
-                                <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
-                                    <span class="text-muted">Generating Thumbnail...</span>
-                                </div>
-                        }
-                        </a>                    
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <span class="video-info"><b>@video.Title</b></span>
-                                <span class="video-info">@video.ResolutionFormatted, @video.DurationFormatted, <i class="bi bi-eye"></i> @video.ViewCount</span>
+                            <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <span class="text-muted">Generating Thumbnail...</span>
                             </div>
-                            <div class="d-flex mb-2">
-                            @foreach (var videoTag in video.VideoTags)
-                            {
-                                <a href="@Url.Action("ByTag", "Video", new { tagId = videoTag.Tag.Id })"
-                                   class="badge bg-primary tag-badge">@videoTag.Tag.Name</a>
-                            }
+                        }
+                    </a>                    
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="video-info"><b>@video.Title</b></span>
+                            <span class="video-info">@video.ResolutionFormatted, @video.DurationFormatted, <i class="bi bi-eye"></i> @video.ViewCount</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                @foreach (var videoTag in video.VideoTags)
+                                {
+                                    <a href="@Url.Action("ByTag", "Video", new { tagId = videoTag.Tag.Id })"
+                                    class="badge bg-primary tag-badge">@videoTag.Tag.Name</a>
+                                }
+                            </div>
+                            <div>
+                                @if (video.TranscriptionAvailable().HasValue)
+                                {
+                                    <i class="bi bi-file-text @(video.TranscriptionAvailable().Value ? "text-bright-green" : "text-warning")" style="font-size: 1.5rem;"></i>
+                                }
+                                else
+                                {
+                                    <span class="requestTranscription" data-videoId="@video.Id"><i class="bi bi-file-text" style="font-size: 1.5rem;"></i></span>
+                                }
+                                
+                                </div>
                             </div>
                         </div>
                         </div>
@@ -117,7 +130,7 @@
                             <span class="video-info"><b>@video.Title</b></span>
                             <span class="video-info">@video.ResolutionFormatted, @video.DurationFormatted, <i class="bi bi-eye"></i> @video.ViewCount</span>
                         </div>
-                        <div class="d-flex mb-2">
+                        <div class="d-flex flex-wrap mb-2">
                             @foreach (var videoTag in video.VideoTags)
                             {
                                 <a href="@Url.Action("ByTag", "Video", new { tagId = videoTag.Tag.Id })"
@@ -157,7 +170,7 @@
                             <span class="video-info"><b>@playlist.Name</b></span>
                             <span class="video-info">@playlist.VideoCount() videos</span>
                         </div>
-                        <div class="d-flex mb-2">
+                        <div class="d-flex flex-wrap mb-2">
                             @foreach (var videoTag in playlist.PlaylistTags)
                             {
                                 <a href="@Url.Action("ByTag", "Video", new { tagId = videoTag.Tag.Id })"
@@ -422,5 +435,34 @@
         });
 
         updatePlaylistLinks();
+
+        // configure request transcription links
+        document.querySelectorAll('.requestTranscription').forEach(function(span) {
+            span.style.cursor = 'pointer';
+
+            span.addEventListener('click', function() {
+                const videoId = this.dataset.videoid;
+                const iconElement = this.querySelector('i');
+
+                const formData = new FormData();
+                formData.append('id', videoId);
+                formData.append('isXhr', 'true');
+
+                fetch('/Video/RequestTranscript', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok && response.status === 200) {
+                        iconElement.classList.add('text-warning');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            });
+        });
     });
+
+
 </script>

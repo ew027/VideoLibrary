@@ -91,6 +91,12 @@ namespace VideoLibrary.Models
                 .WithMany(t => t.ContentTags)
                 .HasForeignKey(ct => ct.TagId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Video>()
+                .HasOne(v => v.Transcription)
+                .WithOne(t => t.Video)
+                .HasForeignKey<Transcription>(t => t.VideoId)  // Transcription holds the FK
+                .IsRequired(false);
         }
     }
 }

@@ -18,6 +18,20 @@ namespace VideoLibrary.Models
 
         public virtual ICollection<VideoTag> VideoTags { get; set; } = new List<VideoTag>();
 
+        public virtual Transcription? Transcription { get; set; }
+
+        public bool? TranscriptionAvailable()
+        {
+            if (Transcription is null)
+            {
+                return null;
+            }
+            else
+            {
+                return Transcription.Status == TranscriptionStatus.Completed;
+            }
+        }
+
         // New video metadata properties
         public long? FileSizeBytes { get; set; }
         public int? Width { get; set; }
