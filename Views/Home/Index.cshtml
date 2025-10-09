@@ -108,35 +108,40 @@
             }
         }
         <div class="col-md-3 mb-4 outer-card" data-tagname="@tag.Name">
-            <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Id })" class="video-link">
-                <div class="card video-card">
-                    @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
-                    {
-                        <img src="@Url.Action("SmallThumbnail", "Home", new { id = tag.Id })"
-                        class="card-img-top video-thumbnail" alt="@tag.Name">
-                    }
-                    else
-                    {
-                        <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
-                            <span class="text-muted">No Thumbnail</span>
-                        </div>
-                    }
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="card-title">@tag.Name</h5>
-                            <div>
+            <div class="card video-card">
+                <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Id })" class="video-link">
+                @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
+                {
+                    <img src="@Url.Action("SmallThumbnail", "Home", new { id = tag.Id })"
+                    class="card-img-top video-thumbnail" alt="@tag.Name">
+                }
+                else
+                {
+                    <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <span class="text-muted">No Thumbnail</span>
+                    </div>
+                }
+                </a>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">@tag.Name</h5>
+                        <div>
                             @if (tag.IsArchived)
                             {
-                                <span class="badge bg-warning">Archived</span>
+                                <span data-id="@tag.Id" data-valueToSet="False" class="badge bg-warning setArchivedStatus">Archived</span>
                             }
-                            </div>
+                            else
+                            {
+                                <span data-id="@tag.Id" data-valueToSet="True" class="badge bg-success setArchivedStatus">Current</span>
+                            }
                         </div>
-                        <p class="card-text">
-                            @tag.GetSummary()
-                        </p>
+                    </div>
+                    <p class="card-text">
+                        @tag.GetSummary()
+                    </p>
                 </div>
             </div>
-            </a>
+            
         </div>
     }
 </div>
@@ -373,6 +378,44 @@
         window.location.href = url;
     }
 }
+
+// configure set archived status
+document.querySelectorAll('.setArchivedStatus').forEach(function(span) {
+    span.style.cursor = 'pointer';
+
+    span.addEventListener('click', function() {
+        const tagId = this.dataset.id;
+        const valueToSet = this.dataset.valuetoset;
+        
+        const formData = new FormData();
+        formData.append('id', tagId);
+        formData.append('isArchived', valueToSet);
+        formData.append('isXhr', 'true');
+
+        fetch('/Video/SetArchivedStatus', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok && response.status === 200) {
+                if (valueToSet === 'True') {
+                    this.textContent = 'Archived';
+                    this.classList.remove('bg-success');
+                    this.classList.add('bg-warning');
+                    this.dataset.valuetoset = 'False';
+                } else {
+                    this.textContent = 'Current';
+                    this.classList.remove('bg-warning');
+                    this.classList.add('bg-success');
+                    this.dataset.valuetoset = 'True';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+});
 
 // Global functions
 let multiTagSelector;

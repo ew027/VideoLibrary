@@ -285,7 +285,7 @@ namespace VideoLibrary.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> SetArchivedStatus(int id, bool isArchived)
+        public async Task<IActionResult> SetArchivedStatus(int id, bool isArchived, bool isXhr = false)
         {
             var tag = await _context.Tags.FindAsync(id);
 
@@ -296,7 +296,14 @@ namespace VideoLibrary.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return RedirectToAction("ByTag", new { tagId = id });
+            if (isXhr)
+            {
+                return Ok();
+            }
+            else
+            {
+                return RedirectToAction("ByTag", new { tagId = id });
+            }
         }
 
         private List<int> ParseTagIds(string tagIds)

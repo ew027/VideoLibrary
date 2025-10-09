@@ -1,0 +1,136 @@
+﻿@using VideoLibrary.Models.ViewModels
+
+@model List<ContentWithContextViewModel>
+
+@{
+    ViewData["Title"] = "Search results";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <!-- Search Form -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h2 class="card-title mb-3">
+                        <i class="bi bi-search"></i> Search results
+                    </h2>
+                    <form class="d-flex me-3" asp-controller="Content" asp-action="Search" method="get">
+                        <div class="input-group">
+                            <input class="form-control" type="search" name="q" placeholder="Search content..."
+                                   value="@ViewBag.SearchTerm" aria-label="Search">
+                            <button class="btn btn-outline-secondary" type="submit">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            @if (Model.Any())
+            {
+                <!-- Results Count -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <p class="text-muted mb-0">
+                        Found <strong>@Model.Count</strong> result@(Model.Count != 1 ? "s" : "") for
+                        <strong>"@ViewBag.SearchTerm"</strong>
+                    </p>
+                </div>
+
+                <!-- Results List -->
+                <div class="search-results">
+                    @foreach (var result in Model)
+                    {
+                        <div class="card mb-3 search-result-card">
+                            <div class="card-body">
+                                <!-- Video Title -->
+                                <h5 class="card-title mb-2">
+                                    <a href="@Url.Action("View", "Content", new { id = result.Content.Id })"
+                                        class="text-decoration-none fw-bold">
+                                        @result.Content.Title
+                                    </a>
+                                </h5>
+
+                                <!-- Context Snippets -->
+                                @if (result.MatchingSnippets?.Any() == true)
+                                {
+                                    <div class="snippets">
+                                        @foreach (var snippet in result.MatchingSnippets)
+                                        {
+                                            <div class="snippet-item mb-2">
+                                                <i class="bi bi-quote text-muted"></i>
+                                                <span class="snippet-text">@snippet</span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <!-- No Results -->
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-search text-muted" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3">No Results Found</h4>
+                        <p class="text-muted">
+                            No transcripts match your search for <strong>"@ViewBag.SearchTerm"</strong>
+                        </p>
+                        <p class="text-muted">
+                            Try different keywords or check your spelling.
+                        </p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .search-result-card {
+        border-left: 4px solid #0d6efd;
+        transition: box-shadow 0.2s ease;
+    }
+
+        .search-result-card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .search-result-card .card-title a {
+            color: #0d6efd;
+            transition: color 0.2s ease;
+        }
+
+            .search-result-card .card-title a:hover {
+                color: #0a58ca;
+            }
+
+    .snippet-item {
+        padding: 8px 12px;
+        background-color: #f8f9fa;
+        border-left: 3px solid #dee2e6;
+        border-radius: 4px;
+    }
+
+    .snippet-text {
+        line-height: 1.6;
+        color: #495057;
+    }
+
+        .snippet-text mark {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-weight: 500;
+        }
+
+    .pagination .page-item.active .page-link {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+</style>

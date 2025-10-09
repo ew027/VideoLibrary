@@ -242,5 +242,45 @@ namespace YourApp.Controllers
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(View), new { id = contentId });
         }
+
+        public async Task<IActionResult> Search(string q, int contextLength = 100)
+        {
+            var contents = await _context.Contents
+                .Where(c => EF.Functions.ILike(c.ContentText, $"%{q}%"))
+                .ToListAsync();
+
+            var results = contents.Select(c => new ContentWithContextViewModel
+            {
+                Content = c,
+                MatchingSnippets = ExtractSnippets(c.ContentText, q, contextLength)
+            }).ToList();
+
+            ViewBag.SearchTerm = q;
+
+            return View("SearchResults", results);
+        }
+
+        private List<string> ExtractSnippets(string text, string searchTerm, int contextLength)
+        {
+            var snippets = new List<string>();
+            var lowerText = text.ToLower();
+            var lowerSearchTerm = searchTerm.ToLower();
+            var index = 0;
+
+            while ((index = lowerText.IndexOf(lowerSearchTerm, index)) != -1)
+            {
+                var start = Math.Max(0, index - contextLength / 2);
+                var end = Math.Min(text.Length, index + searchTerm.Length + contextLength / 2);
+
+                var snippet = text.Substring(start, end - start);
+                if (start > 0) snippet = "..." + snippet;
+                if (end < text.Length) snippet = snippet + "...";
+
+                snippets.Add(snippet);
+                index += searchTerm.Length;
+            }
+
+            return snippets.Distinct().Take(3).ToList(); // Limit to 3 snippets per video
+        }
     }
 }
