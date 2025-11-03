@@ -57,7 +57,7 @@
     <div class="row">
         @foreach (var video in Model.Videos)
         {
-            <div class="col-md-4 mb-4">
+            <div class="col-md-3 mb-4">
                 <div class="card video-card">
                     <a href="@Url.Action("Details", "Video", new { id = video.Id, tagId = Model.Tag.Id })" class="video-link">
                         @if (!string.IsNullOrEmpty(video.ThumbnailPath))
@@ -110,7 +110,7 @@
     <div class="row">
         @foreach (var video in Model.ClipVideos)
         {
-            <div class="col-md-4 mb-4">
+            <div class="col-md-3 mb-4">
                 <div class="card video-card">
                     <a href="@Url.Action("Details", "Video", new { id = video.Id, tagId = Model.Tag.Id })" class="video-link">
                         @if (!string.IsNullOrEmpty(video.ThumbnailPath))
@@ -150,7 +150,7 @@
     <div class="row">
         @foreach (var playlist in Model.Playlists)
         {
-            <div class="col-md-4 mb-4">
+            <div class="col-md-3 mb-4">
                 <div class="card video-card">
                     <a href="@Url.Action("Play", "Playlist", new { id = playlist.Id })" class="video-link">
                         @if (playlist.VideoCount() > 0)
@@ -190,7 +190,7 @@
         <div class="row">
         @foreach (var gallery in Model.Galleries)
         {
-                    <div class="col-md-4 mb-4">
+                    <div class="col-md-3 mb-4">
                         <div class="card video-card">
                                     <a href="@Url.Action("Details", "Gallery", new { id = gallery.Id })" class="video-link">
                     @if (gallery.ThumbnailPath != null)
@@ -226,7 +226,7 @@
     <div class="row">
         @foreach (var content in Model.Contents)
         {
-            <div class="col-md-4 mb-4">
+            <div class="col-md-3 mb-4">
                 <div class="card video-card">
                             <a href="@Url.Action("View", "Content", new { id = content.Id, tagId = Model.Tag.Id })" class="video-link">
                         <div class="card-body">

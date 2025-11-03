@@ -19,7 +19,7 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Tags</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Tags">Tags</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Playlist" asp-action="Saved">
@@ -74,7 +74,115 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/toast.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+
+    <!-- Tag Tree Navigator Component -->
+    <!-- Add this to your _Layout.cshtml or individual views -->
+    <!-- Toggle Button (floating button on left side) -->
+    <button id="tagTreeToggleBtn" class="tag-tree-toggle-btn" aria-label="Toggle Tag Navigator">
+        <i class="bi bi-tag-fill"></i>
+    </button>
+
+    <!-- Tag Tree Sidebar -->
+    <div id="tagTreeSidebar" class="tag-tree-sidebar">
+        <div class="tag-tree-header">
+            <h5 class="mb-0">
+                <i class="bi bi-tags-fill me-2"></i>
+                Tag Navigator
+            </h5>
+            <div class="tag-tree-controls">
+                <button id="tagTreePinBtn" class="btn btn-sm btn-link" title="Pin sidebar">
+                    <i class="bi bi-pin"></i>
+                </button>
+                <button id="tagTreeCloseBtn" class="btn btn-sm btn-link" title="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="tag-tree-search">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" id="tagTreeSearch" class="form-control" placeholder="Search tags...">
+                <button class="btn btn-outline-secondary" type="button" id="tagTreeClearSearch" style="display: none;">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="tag-tree-search-actions mt-2">
+                <button id="tagTreeExpandAll" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrows-expand"></i> Expand All
+                </button>
+                <button id="tagTreeCollapseAll" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrows-collapse"></i> Collapse All
+                </button>
+            </div>
+        </div>
+
+        <div class="tag-tree-content">
+            <div id="tagTreeLoading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading tags...</p>
+            </div>
+            <div id="tagTreeContainer" style="display: none;">
+                <!-- Tree will be rendered here -->
+            </div>
+            <div id="tagTreeEmpty" style="display: none;" class="text-center py-5 text-muted">
+                <i class="bi bi-tags" style="font-size: 3rem;"></i>
+                <p class="mt-2">No tags found</p>
+            </div>
+        </div>
+
+        <div class="tag-tree-footer">
+            <small class="text-muted">
+                <span id="tagTreeCount">0</span> tags
+                <span id="tagTreeSelected" style="display: none;">
+                    | <span class="text-primary"><span id="tagTreeSelectedCount">0</span> selected</span>
+                </span>
+            </small>
+        </div>
+    </div>
+
+    <!-- Overlay (shown when sidebar is open and not pinned) -->
+    <div id="tagTreeOverlay" class="tag-tree-overlay"></div>
+
+    <link rel="stylesheet" href="~/css/tagNavigator.css" asp-append-version="true" />
+    <script src="~/js/tagTreeNavigator.js"></script>
+    <script>
+        // Initialize the tag tree navigator when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const tagTree = new TagTreeNavigator({
+                containerId: 'tagTreeContainer',
+                loadingId: 'tagTreeLoading',
+                emptyId: 'tagTreeEmpty',
+
+                // API endpoint to load tags
+                loadUrl: '/Home/GetAllTagsHierarchicalWithService',
+
+                // Callbacks
+                onTagClick: function(tag) {
+                    // Navigate to tag page
+                    window.location.href = `/Video/ByTag/${tag.id}`;
+                },
+
+                onTagSelect: function(tag) {
+                    console.log('Tag selected:', tag);
+                },
+
+                // Options
+                showCounts: true,
+                rememberState: true, // Remember expanded/collapsed state in localStorage
+                multiSelect: false
+            });
+
+            // Make it globally accessible if needed
+            window.tagTreeNavigator = tagTree;
+        });
+    </script>
 </body>
 </html>

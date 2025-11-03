@@ -1,0 +1,165 @@
+﻿/* Tag Tree Styles */
+.tag-tree-container {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.tag-tree-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.25rem;
+    background: white;
+    cursor: move;
+    transition: all 0.2s;
+}
+
+    .tag-tree-item:hover {
+        background: #f8f9fa;
+        border-color: #0d6efd;
+    }
+
+    .tag-tree-item.selected {
+        background: #e7f3ff;
+        border-color: #0d6efd;
+    }
+
+    .tag-tree-item.dragging {
+        opacity: 0.5;
+        cursor: grabbing;
+    }
+
+    .tag-tree-item.drag-over {
+        border-color: #198754;
+        background: #d1e7dd;
+    }
+
+    .tag-tree-item.empty-tag {
+        border-left: 3px solid #ffc107;
+        background: #fff3cd;
+    }
+
+.tag-tree-children {
+    margin-left: 2rem;
+    border-left: 2px solid #e9ecef;
+    padding-left: 0.5rem;
+}
+
+.tag-tree-expand-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    margin-right: 0.5rem;
+    color: #6c757d;
+    flex-shrink: 0;
+}
+
+    .tag-tree-expand-btn:hover {
+        color: #0d6efd;
+    }
+
+    .tag-tree-expand-btn i {
+        transition: transform 0.2s;
+    }
+
+    .tag-tree-expand-btn.expanded i {
+        transform: rotate(90deg);
+    }
+
+    .tag-tree-expand-btn.no-children {
+        visibility: hidden;
+    }
+
+.tag-tree-handle {
+    cursor: grab;
+    margin-right: 0.5rem;
+    color: #6c757d;
+}
+
+    .tag-tree-handle:active {
+        cursor: grabbing;
+    }
+
+.tag-tree-icon {
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+}
+
+.tag-tree-label {
+    flex: 1;
+    font-weight: 500;
+}
+
+.tag-tree-count {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin: 0 0.5rem;
+}
+
+.tag-tree-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+    .tag-tree-actions .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+/* Empty Tags List */
+.empty-tag-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 0.25rem;
+}
+
+    .empty-tag-item:hover {
+        background: #ffe69c;
+    }
+
+/* Tag Details */
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+.detail-label {
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.detail-value {
+    text-align: right;
+}
+
+/* Animations */
+@keyframes highlight {
+    0% {
+        background: #d1e7dd;
+    }
+
+    100% {
+        background: white;
+    }
+}
+
+.tag-tree-item.just-moved {
+    animation: highlight 1s ease;
+}

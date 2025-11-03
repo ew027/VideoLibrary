@@ -18,6 +18,8 @@ namespace VideoLibrary.Models
 
         public virtual ICollection<VideoTag> VideoTags { get; set; } = new List<VideoTag>();
 
+        public ICollection<Bookmark> Bookmarks { get; set; } = new List<Bookmark>();
+
         public virtual Transcription? Transcription { get; set; }
 
         public bool? TranscriptionAvailable()

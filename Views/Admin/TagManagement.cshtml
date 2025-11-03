@@ -1,0 +1,251 @@
+@model VideoLibrary.Models.ViewModels.TagManagementViewModel
+
+@{
+    ViewData["Title"] = "Tag Management";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index", "Admin")">Admin</a></li>
+                    <li class="breadcrumb-item active">Tag Management</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-tags-fill"></i> Tag Management</h1>
+            <p class="text-muted">Manage your tag hierarchy with drag and drop</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTagModal">
+                <i class="bi bi-plus-lg"></i> Add Tag
+            </button>
+            <button class="btn btn-outline-secondary" id="expandAllBtn">
+                <i class="bi bi-arrows-expand"></i>
+            </button>
+            <button class="btn btn-outline-secondary" id="collapseAllBtn">
+                <i class="bi bi-arrows-collapse"></i>
+            </button>
+            <button class="btn btn-outline-info" id="refreshBtn">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Tag Tree -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Tag Hierarchy</h5>
+                    <div>
+                        <span class="badge bg-primary">
+                            Total: <span id="totalTagCount">@Model.TotalTags</span>
+                        </span>
+                        <span class="badge bg-warning text-dark" id="emptyTagsBadge" style="display: none;">
+                            Empty: <span id="emptyTagCount">0</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input type="text" id="tagSearchInput" class="form-control" 
+                               placeholder="Search tags...">
+                    </div>
+
+                    <div id="tagTreeContainer" class="tag-tree-container">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Details Panel -->
+        <div class="col-lg-4">
+            <div class="card" id="tagDetailsPanel" style="display: none;">
+                <div class="card-header">
+                    <h5 class="mb-0">Tag Details</h5>
+                </div>
+                <div class="card-body">
+                    <div id="tagDetails">
+                        <!-- Details will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="emptyTagsPanel">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle text-warning"></i>
+                        Empty Tags
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">Tags with no associated content</p>
+                    <div id="emptyTagsList">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        Quick Help
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li><strong>Drag & Drop:</strong> Reorder or move tags to different parents</li>
+                        <li><strong>Click tag:</strong> View details and edit</li>
+                        <li><strong>Chevron:</strong> Expand/collapse children</li>
+                        <li><strong>Empty tags:</strong> Shown in orange, safe to delete</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Tag Modal -->
+<div class="modal fade" id="addTagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Tag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTagForm">
+                    <div class="mb-3">
+                        <label for="newTagName" class="form-label">Tag Name *</label>
+                        <input type="text" class="form-control" id="newTagName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newTagParent" class="form-label">Parent Tag</label>
+                        <select class="form-select" id="newTagParent">
+                            <option value="">None (Root Level)</option>
+                            <!-- Will be populated dynamically -->
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveNewTagBtn">
+                    <i class="bi bi-check-lg"></i> Create Tag
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Tag Modal -->
+<div class="modal fade" id="renameTagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rename Tag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="renameTagForm">
+                    <input type="hidden" id="renameTagId">
+                    <div class="mb-3">
+                        <label for="renameTagName" class="form-label">Tag Name *</label>
+                        <input type="text" class="form-control" id="renameTagName" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveRenameBtn">
+                    <i class="bi bi-check-lg"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Tag Modal -->
+<div class="modal fade" id="deleteTagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Delete Tag</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="deleteTagId">
+                <p>Are you sure you want to delete <strong id="deleteTagName"></strong>?</p>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="deleteDescendants">
+                    <label class="form-check-label" for="deleteDescendants">
+                        Also delete all child tags (<span id="deleteDescendantCount">0</span>)
+                    </label>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    This action cannot be undone!
+                </div>
+                <div id="deleteTagContentWarning" style="display: none;" class="alert alert-danger">
+                    <i class="bi bi-exclamation-octagon"></i>
+                    <strong>Warning:</strong> This tag has <span id="deleteTagContentCount"></span> items associated with it.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="~/css/tagManagement.css" asp-append-version="true" />
+
+<script src="~/js/tagManagement.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    window.tagManager = new TagManagementUI({
+        loadUrl: '/Admin/GetTagsHierarchical',
+        renameUrl: '/Admin/RenameTag',
+        deleteUrl: '/Admin/DeleteTag',
+        moveUrl: '/Admin/MoveTag',
+        addUrl: '/Admin/AddTag',
+        getDetailsUrl: '/Admin/GetTagDetails',
+        getEmptyTagsUrl: '/Admin/GetEmptyTags'
+    });
+});
+</script>

@@ -1,438 +1,112 @@
-﻿@model IEnumerable<VideoLibrary.Models.Tag>
+﻿@using VideoLibrary.Models.ViewModels
+@* Views/Home/Index.cshtml *@
+@model HomeViewModel
 
 @{
-    ViewData["Title"] = "Video Tags";
-
-    var startLetters = new List<string>();
-    var prevLetter = "";
-
-    foreach (var tag in Model)
-    {
-        var firstLetter = tag.Name.Substring(0, 1);
-
-        if (firstLetter != prevLetter)
-        {
-            startLetters.Add(firstLetter);
-            prevLetter = firstLetter;
-        }
-    }
-
-    var letterIndex = 0;
+    ViewData["Title"] = "Home";
 }
-<div class="d-flex justify-content-between align-items-start mb-2">
-    @if (ViewBag.IsSearch)
-    {
-        <h2>Search results for @ViewData["SearchQuery"]</h2>
-    }
-    else
-    {
-        <h2>Tags</h2>
-    }
-    <form method="get" action="@Url.Action("Index", "Home")">
-        <select asp-items="@ViewBag.ArchivedViewOptions" name="showArchived" class="form-select" onchange="this.form.submit()">
 
-        </select>
-    </form>
-</div>
-<div class="d-flex justify-content-between align-items-start mb-2">
-    <div>
-        <strong>
-            <a name="top"></a>
-            @foreach (var letter in startLetters)
-            {
-                <a href="#sw-@letter" style="padding-right: 5px; font-size: 1.2em;">@letter</a>
-            }
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Main Content Column (80%) -->
+        <div class="col-lg-9 col-md-8">
 
-        </strong>
-    </div>
-
-</div>
-<div class="card mb-4">
-    <div class="card-header">
-        <button class="btn btn-link p-0 text-decoration-none w-100 text-start" 
-        type="button" data-bs-toggle="collapse" data-bs-target="#tagPanel">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="bi bi-tags"></i> Tag browser
-                </h5>
-                <i class="bi bi-chevron-down"></i>
-            </div>
-        </button>
-    </div>
-    <div class="collapse" id="tagPanel">
-        <div class="card-body">
-            <div class="mb-3">
-                <div class="tag-input-container">
-                    <div class="selected-tags" id="selectedTags"></div>
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="tagSearch" 
-                        placeholder="Start typing to search tags..." autocomplete="off">
-                        <button class="btn btn-outline-secondary" type="button" onclick="clearAllTags()">
-                            <i class="bi bi-x"></i> Clear
-                        </button>
-                    </div>
-                    <div class="dropdown-menu" id="tagDropdown" style="display: none;"></div>
+            <!-- Recently Added Videos Panel -->
+            <div class="mb-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="mb-3">
+                        <i class="bi bi-clock-history me-2"></i>Recently Added
+                    </h3>
+                    <div><a href="/?seemore=1">See more</a></div>
                 </div>
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="text-muted" id="selectedTagsCount">No tags selected</span>
-                </div>
-                <button type="button" class="btn btn-primary" onclick="viewSelectedTags()" 
-                id="viewTagsBtn" disabled>
-                    <i class="bi bi-eye"></i> View Videos
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="row">
-    @foreach (var tag in Model)
-    {
-        @if (startLetters.Count > 1)
-        {
-            @if (tag.Name.Substring(0, 1).ToLower() == startLetters[letterIndex])
-            {
-                <a href="#top" class="top-link">top</a> 
-                <a name="sw-@startLetters[letterIndex]
-                "></a>
-                if (letterIndex < startLetters.Count - 1)
-                {
-                    letterIndex++;
-                }
-                else
-                {
-                    letterIndex = 0;
-                }
-            }
-        }
-        <div class="col-md-3 mb-4 outer-card" data-tagname="@tag.Name">
-            <div class="card video-card">
-                <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Id })" class="video-link">
-                @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
-                {
-                    <img src="@Url.Action("SmallThumbnail", "Home", new { id = tag.Id })"
-                    class="card-img-top video-thumbnail" alt="@tag.Name">
-                }
-                else
-                {
-                    <div class="card-img-top thumbnail-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
-                        <span class="text-muted">No Thumbnail</span>
-                    </div>
-                }
-                </a>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title">@tag.Name</h5>
-                        <div>
-                            @if (tag.IsArchived)
-                            {
-                                <span data-id="@tag.Id" data-valueToSet="False" class="badge bg-warning setArchivedStatus">Archived</span>
-                            }
-                            else
-                            {
-                                <span data-id="@tag.Id" data-valueToSet="True" class="badge bg-success setArchivedStatus">Current</span>
-                            }
+                <div class="row row-cols-1 row-cols-md-3 row-cols-lg-5 g-3">
+                    @foreach (var video in Model.RecentVideos)
+                    {
+                        <div class="col">
+                            @await Html.PartialAsync("_VideoCard", video)
                         </div>
-                    </div>
-                    <p class="card-text">
-                        @tag.GetSummary()
-                    </p>
+                    }
                 </div>
+                @if (!Model.RecentVideos.Any())
+                {
+                    <p class="text-muted">No recent videos found.</p>
+                }
             </div>
-            
+
+            <!-- Unwatched Videos Panel -->
+            <div class="mb-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="mb-3">
+                        <i class="bi bi-eye-slash me-2"></i>Discover Unwatched
+                    </h3>
+                    <h3 class="mb-3">
+                        <a href="/Home/ClearCache?cacheId=unwatched"><i class="bi bi-arrow-repeat me-2"></i></a>
+                    </h3>
+                </div>
+                <div class="row row-cols-1 row-cols-md-3 row-cols-lg-5 g-3">
+                    @foreach (var video in Model.UnwatchedVideos)
+                    {
+                        <div class="col">
+                            @await Html.PartialAsync("_VideoCard", video)
+                        </div>
+                    }
+                </div>
+                @if (!Model.UnwatchedVideos.Any())
+                {
+                    <p class="text-muted">No unwatched videos found.</p>
+                }
+            </div>
+
+            <!-- Random Videos Panel -->
+            <div class="mb-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="mb-3">
+                        <i class="bi bi-shuffle me-2"></i>Random Selection
+                    </h3>
+                    <h3 class="mb-3">
+                        <a href="/Home/ClearCache?cacheId=random"><i class="bi bi-arrow-repeat me-2"></i></a>
+                    </h3>
+                </div>
+                <div class="row row-cols-1 row-cols-md-3 row-cols-lg-5 g-3">
+                    @foreach (var video in Model.RandomVideos)
+                    {
+                        <div class="col">
+                            @await Html.PartialAsync("_VideoCard", video)
+                        </div>
+                    }
+                </div>
+                @if (!Model.RandomVideos.Any())
+                {
+                    <p class="text-muted">No videos found.</p>
+                }
+            </div>
+
         </div>
-    }
-</div>
 
-@if (!Model.Any())
-{
-    <div class="alert alert-info">
-        <h4>No tags found</h4>
-        <p>Videos are being scanned in the background. Tags will appear here once videos are processed and tagged.</p>
+        <!-- Sidebar Column (20%) -->
+        <div class="col-lg-3 col-md-4">
+            <div class="sticky-top" style="top: 20px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-fire me-2"></i>Most Viewed
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @foreach (var video in Model.MostViewedVideos)
+                        {
+                            <a asp-controller="Video" asp-action="Details" asp-route-id="@video.Id"
+                               class="text-decoration-none d-flex justify-content-between align-items-start">
+                                <div class="text-truncate me-2">
+                                    @video.Title
+                                </div>
+                                <span class="badge bg-primary rounded-pill">@video.ViewCount</span>
+                            </a>
+                        }
+                    </div>
+                </div>
+                
+            </div>
+        </div>
     </div>
-}
-
-<style>
-        #tagPanel .btn-link {
-        color: inherit;
-        border: none;
-        background: none;
-    }
-
-        #tagPanel .btn-link:hover {
-            color: #0d6efd;
-        }
-
-    #tagPanel .bi-chevron-down {
-        transition: transform 0.2s;
-    }
-
-    #tagPanel.show .bi-chevron-down {
-        transform: rotate(180deg);
-    }
-
-.tag-input-container {
-    position: relative;
-}
-
-.selected-tags {
-    min-height: 2rem;
-    margin-bottom: 0.5rem;
-}
-
-.selected-tag {
-    display: inline-flex;
-    align-items: center;
-    font-size: 0.9rem;
-    padding: 0.4rem 0.6rem;
-}
-
-.selected-tag .btn-close {
-    padding: 0;
-    margin: 0;
-    width: 0.8rem;
-    height: 0.8rem;
-    background-size: 0.6rem;
-}
-
-.dropdown-menu {
-    max-height: 250px;
-    overflow-y: auto;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-
-.dropdown-item {
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    padding: 0.5rem 1rem;
-}
-
-.dropdown-item:hover {
-    background-color: #f8f9fa;
-}
-
-.dropdown-item:focus {
-    background-color: #e9ecef;
-}
-
-.video-card {
-    transition: transform 0.2s;
-}
-
-.video-card:hover {
-    transform: translateY(-2px);
-}
-</style>
-</style>
-
-<script>
-
-    class MultiTagSelector {
-    constructor() {
-        this.selectedTags = new Map(); // Map<tagId, tagName>
-        this.allTags = @Html.Raw(Json.Serialize(Model.Select(t => new { id = t.Id, name = t.Name })));
-        this.initializeEventListeners();
-    }
-
-    initializeEventListeners() {
-        const tagSearch = document.getElementById('tagSearch');
-        const tagDropdown = document.getElementById('tagDropdown');
-
-        // Input event for autocomplete
-        tagSearch.addEventListener('input', (e) => {
-            this.handleSearchInput(e.target.value);
-        });
-
-        // Handle Enter key
-        tagSearch.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const dropdown = document.getElementById('tagDropdown');
-                const firstItem = dropdown.querySelector('.dropdown-item');
-                if (firstItem) {
-                    firstItem.click();
-                }
-            }
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.tag-input-container')) {
-                tagDropdown.style.display = 'none';
-            }
-        });
-    }
-
-    handleSearchInput(searchTerm) {
-        const dropdown = document.getElementById('tagDropdown');
-
-        if (searchTerm.trim() === '') {
-            dropdown.style.display = 'none';
-            return;
-        }
-
-        const filteredTags = this.allTags.filter(tag => 
-            tag.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-            !this.selectedTags.has(tag.id)
-        );
-
-        this.renderDropdown(filteredTags, searchTerm);
-    }
-
-    renderDropdown(tags, searchTerm) {
-        const dropdown = document.getElementById('tagDropdown');
-
-        if (tags.length === 0) {
-            dropdown.style.display = 'none';
-            return;
-        }
-
-        const html = tags.slice(0, 10).map(tag => `
-            <button type="button" class="dropdown-item" onclick="multiTagSelector.selectTag(${tag.id}, '${tag.name}')">
-                <i class="bi bi-tag"></i> ${this.highlightMatch(tag.name, searchTerm)}
-            </button>
-        `).join('');
-
-        dropdown.innerHTML = html;
-        dropdown.style.display = 'block';
-        dropdown.style.position = 'absolute';
-        dropdown.style.top = '100%';
-        dropdown.style.left = '0';
-        dropdown.style.right = '0';
-        dropdown.style.zIndex = '1000';
-    }
-
-    highlightMatch(text, searchTerm) {
-        const regex = new RegExp(`(${searchTerm})`, 'gi');
-        return text.replace(regex, '<strong>$1</strong>');
-    }
-
-    selectTag(tagId, tagName) {
-        this.selectedTags.set(tagId, tagName);
-        this.renderSelectedTags();
-        this.updateUI();
-
-        // Clear search input
-        document.getElementById('tagSearch').value = '';
-        document.getElementById('tagDropdown').style.display = 'none';
-    }
-
-    removeTag(tagId) {
-        this.selectedTags.delete(tagId);
-        this.renderSelectedTags();
-        this.updateUI();
-    }
-
-    renderSelectedTags() {
-        const container = document.getElementById('selectedTags');
-
-        if (this.selectedTags.size === 0) {
-            container.innerHTML = '';
-            return;
-        }
-
-        const html = Array.from(this.selectedTags.entries()).map(([tagId, tagName]) => `
-            <span class="badge bg-primary me-1 mb-1 selected-tag">
-                ${tagName}
-                <button type="button" class="btn-close btn-close-white ms-1" 
-                        onclick="multiTagSelector.removeTag(${tagId})" style="font-size: 0.7em;"></button>
-            </span>
-        `).join('');
-
-        container.innerHTML = html;
-    }
-
-    updateUI() {
-        const count = this.selectedTags.size;
-        const countElement = document.getElementById('selectedTagsCount');
-        const viewButton = document.getElementById('viewTagsBtn');
-
-        if (count === 0) {
-            countElement.textContent = 'No tags selected';
-            viewButton.disabled = true;
-        } else {
-            countElement.textContent = `${count} tag${count === 1 ? '' : 's'} selected`;
-            viewButton.disabled = false;
-        }
-    }
-
-    clear() {
-        this.selectedTags.clear();
-        this.renderSelectedTags();
-        this.updateUI();
-        document.getElementById('tagSearch').value = '';
-        document.getElementById('tagDropdown').style.display = 'none';
-    }
-
-    viewSelected() {
-        if (this.selectedTags.size === 0) return;
-
-        const tagIds = Array.from(this.selectedTags.keys()).join(',');
-        const url = `/Video/ByMultipleTags?tagIds=${tagIds}`;
-        window.location.href = url;
-    }
-}
-
-// configure set archived status
-document.querySelectorAll('.setArchivedStatus').forEach(function(span) {
-    span.style.cursor = 'pointer';
-
-    span.addEventListener('click', function() {
-        const tagId = this.dataset.id;
-        const valueToSet = this.dataset.valuetoset;
-        
-        const formData = new FormData();
-        formData.append('id', tagId);
-        formData.append('isArchived', valueToSet);
-        formData.append('isXhr', 'true');
-
-        fetch('/Video/SetArchivedStatus', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (response.ok && response.status === 200) {
-                if (valueToSet === 'True') {
-                    this.textContent = 'Archived';
-                    this.classList.remove('bg-success');
-                    this.classList.add('bg-warning');
-                    this.dataset.valuetoset = 'False';
-                } else {
-                    this.textContent = 'Current';
-                    this.classList.remove('bg-warning');
-                    this.classList.add('bg-success');
-                    this.dataset.valuetoset = 'True';
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
-    });
-});
-
-// Global functions
-let multiTagSelector;
-
-document.addEventListener('DOMContentLoaded', function() {
-    multiTagSelector = new MultiTagSelector();
-});
-
-function addTagToSelection(tagId, tagName) {
-    multiTagSelector.selectTag(tagId, tagName);
-}
-
-function clearAllTags() {
-    multiTagSelector.clear();
-}
-
-function viewSelectedTags() {
-    multiTagSelector.viewSelected();
-}
-</script>
+</div>

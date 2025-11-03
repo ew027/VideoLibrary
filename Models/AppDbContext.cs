@@ -27,6 +27,8 @@ namespace VideoLibrary.Models
 
         public DbSet<Transcription> Transcriptions { get; set; }
 
+        public DbSet<Bookmark> Bookmarks { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<VideoTag>()
@@ -97,6 +99,15 @@ namespace VideoLibrary.Models
                 .WithOne(t => t.Video)
                 .HasForeignKey<Transcription>(t => t.VideoId)  // Transcription holds the FK
                 .IsRequired(false);
+
+            modelBuilder.Entity<Bookmark>()
+                .HasOne(b => b.Video)
+                .WithMany(v => v.Bookmarks)
+                .HasForeignKey(b => b.VideoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Bookmark>()
+                .HasIndex(b => new { b.VideoId, b.TimeInSeconds });
         }
     }
 }

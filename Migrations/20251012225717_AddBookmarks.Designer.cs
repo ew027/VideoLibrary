@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VideoLibrary.Models;
@@ -11,9 +12,11 @@ using VideoLibrary.Models;
 namespace VideoLibrary.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251012225717_AddBookmarks")]
+    partial class AddBookmarks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -288,26 +291,10 @@ namespace VideoLibrary.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_archived");
 
-                    b.Property<int>("Left")
-                        .HasColumnType("integer")
-                        .HasColumnName("left");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("integer")
-                        .HasColumnName("level");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
-
-                    b.Property<int?>("ParentId")
-                        .HasColumnType("integer")
-                        .HasColumnName("parent_id");
-
-                    b.Property<int>("Right")
-                        .HasColumnType("integer")
-                        .HasColumnName("right");
 
                     b.Property<string>("ThumbnailPath")
                         .HasColumnType("text")
@@ -315,9 +302,6 @@ namespace VideoLibrary.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_tags");
-
-                    b.HasIndex("ParentId")
-                        .HasDatabaseName("ix_tags_parent_id");
 
                     b.ToTable("tags", (string)null);
                 });
@@ -524,16 +508,6 @@ namespace VideoLibrary.Migrations
                     b.Navigation("Tag");
                 });
 
-            modelBuilder.Entity("VideoLibrary.Models.Tag", b =>
-                {
-                    b.HasOne("VideoLibrary.Models.Tag", "Parent")
-                        .WithMany("Children")
-                        .HasForeignKey("ParentId")
-                        .HasConstraintName("fk_tags_tags_parent_id");
-
-                    b.Navigation("Parent");
-                });
-
             modelBuilder.Entity("VideoLibrary.Models.Transcription", b =>
                 {
                     b.HasOne("VideoLibrary.Models.Video", "Video")
@@ -582,8 +556,6 @@ namespace VideoLibrary.Migrations
 
             modelBuilder.Entity("VideoLibrary.Models.Tag", b =>
                 {
-                    b.Navigation("Children");
-
                     b.Navigation("ContentTags");
 
                     b.Navigation("GalleryTags");

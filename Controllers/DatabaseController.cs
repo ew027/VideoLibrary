@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using System.Threading.Tasks;
 using VideoLibrary.Models;
 using VideoLibrary.Models.ViewModels;
 
@@ -13,18 +14,20 @@ namespace VideoLibrary.Controllers
         private readonly AppDbContext _context;
         private readonly ILogger<DatabaseController> _logger;
 
+        private static int? SqlTagId;
+
         public DatabaseController(AppDbContext context, ILogger<DatabaseController> logger)
         {
             _context = context;
             _logger = logger;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             var model = new DatabaseQueryViewModel
             {
                 Query = "SELECT * FROM Videos LIMIT 10;",
-                PredefinedQueries = GetPredefinedQueries()
+                PredefinedQueries = await GetPredefinedQueries()
             };
 
             return View(model);
@@ -34,7 +37,7 @@ namespace VideoLibrary.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ExecuteQuery(DatabaseQueryViewModel model)
         {
-            model.PredefinedQueries = GetPredefinedQueries();
+            model.PredefinedQueries = await GetPredefinedQueries();
 
             if (string.IsNullOrWhiteSpace(model.Query))
             {
@@ -143,8 +146,26 @@ namespace VideoLibrary.Controllers
             };
         }
 
-        private List<PredefinedQuery> GetPredefinedQueries()
+        private async Task<List<PredefinedQuery>> GetPredefinedQueries()
         {
+            if (SqlTagId is null)
+            {
+                var sqlTag = await _context.Tags.FirstOrDefaultAsync(x => x.Name == "sql");
+
+                if (sqlTag != null)
+                {
+                    SqlTagId = sqlTag.Id;
+                }
+            }
+
+            var queries = await _context.Contents
+                            .Where(c => c.ContentTags.Any(ct => ct.TagId == SqlTagId))
+                            .Select(c => new PredefinedQuery() { Name = c.Title, Query = c.ContentText })
+                            .ToListAsync();
+
+            return queries;
+             
+            /*
             return new List<PredefinedQuery>
             {
                 new() { Name = "All Videos", Query = "SELECT Id, Title, DurationFormatted, ResolutionFormatted, FileSizeFormatted FROM Videos ORDER BY Title;" },
@@ -158,15 +179,16 @@ namespace VideoLibrary.Controllers
                 new() { Name = "Largest Videos by File Size", Query = "SELECT Title, FileSizeFormatted, DurationFormatted FROM Videos WHERE FileSizeBytes IS NOT NULL ORDER BY FileSizeBytes DESC LIMIT 10;" },
                 new() { Name = "Videos by Resolution", Query = "SELECT CASE WHEN Width IS NOT NULL AND Height IS NOT NULL THEN Width || 'x' || Height ELSE 'Unknown' END as Resolution, COUNT(*) as Count FROM Videos GROUP BY Resolution ORDER BY Count DESC;" }
             };
+            */
         }
 
         [HttpPost]
-        public IActionResult LoadPredefinedQuery(string query)
+        public async Task<IActionResult> LoadPredefinedQuery(string query)
         {
             var model = new DatabaseQueryViewModel
             {
                 Query = query,
-                PredefinedQueries = GetPredefinedQueries()
+                PredefinedQueries = await GetPredefinedQueries()
             };
 
             return View("Index", model);

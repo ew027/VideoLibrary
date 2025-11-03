@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using VideoLibrary.Models;
 using VideoLibrary.Models.ViewModels;
 
-namespace YourApp.Controllers
+namespace VideoLibrary.Controllers
 {
     [Authorize]
     public class ContentController : Controller

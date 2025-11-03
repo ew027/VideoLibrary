@@ -14,12 +14,19 @@ namespace VideoLibrary.Models
 
         public bool IsArchived { get; set; } = false;
 
+        // Nested Set Model fields for hierarchical structure
+        public int Left { get; set; }
+        public int Right { get; set; }
+        public int Level { get; set; }
+
+        // Parent reference for easier UI operations and fallback queries
+        public int? ParentId { get; set; }
+        public virtual Tag? Parent { get; set; }
+        public virtual ICollection<Tag> Children { get; set; } = new List<Tag>();
+
         public virtual ICollection<VideoTag> VideoTags { get; set; } = new List<VideoTag>();
-
         public virtual ICollection<GalleryTag> GalleryTags { get; set; } = new List<GalleryTag>();
-
         public virtual ICollection<PlaylistTag> PlaylistTags { get; set; } = new List<PlaylistTag>();
-
         public virtual ICollection<ContentTag> ContentTags { get; set; } = new List<ContentTag>();
 
         public string GetSummary()
@@ -47,6 +54,30 @@ namespace VideoLibrary.Models
             }
 
             return summary.ToString()[..^2];
+        }
+
+        /// <summary>
+        /// Check if this tag has any children
+        /// </summary>
+        public bool HasChildren()
+        {
+            return Right - Left > 1;
+        }
+
+        /// <summary>
+        /// Get the number of descendants (not including self)
+        /// </summary>
+        public int GetDescendantCount()
+        {
+            return (Right - Left - 1) / 2;
+        }
+
+        /// <summary>
+        /// Get display name with indentation based on level
+        /// </summary>
+        public string GetIndentedName(string indent = "  ")
+        {
+            return new string(' ', Level * indent.Length) + Name;
         }
     }
 }

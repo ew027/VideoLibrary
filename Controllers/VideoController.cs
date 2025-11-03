@@ -41,6 +41,7 @@ namespace VideoLibrary.Controllers
             var video = await _context.Videos
                 .Include(v => v.VideoTags)
                 .ThenInclude(vt => vt.Tag)
+                .Include(v => v.Bookmarks)
                 .FirstOrDefaultAsync(v => v.Id == id);
 
             if (video == null)
@@ -111,6 +112,8 @@ namespace VideoLibrary.Controllers
             }
         }
 
+        [Route("Video/ByTag")]
+        [Route("Video/ByTag/{tagId}")]
         public async Task<IActionResult> ByTag(int tagId)
         {
             if (ClipTagId is null)

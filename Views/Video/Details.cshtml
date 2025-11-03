@@ -204,6 +204,58 @@
                 </div>
             </div>
 
+            <div class="card mt-3" id="bookmarksContainer">
+                <div class="card-header" data-bs-toggle="collapse" data-bs-target="#bookmarksCollapse" style="cursor: pointer;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            Bookmarks
+                            <span class="badge bg-secondary" id="bookmarksCount">@Model.Video.Bookmarks?.Count ?? 0</span>
+                        </h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="addBookmarkBtn" title="Add bookmark at current time">
+                                <i class="bi bi-plus-circle"></i> Add
+                            </button>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="collapse" id="bookmarksCollapse">
+                    <div class="card-body p-0">
+                        <div id="bookmarksList">
+                            @if (Model.Video.Bookmarks?.Any() == true)
+                            {
+                                @foreach (var bookmark in Model.Video.Bookmarks.OrderBy(b => b.TimeInSeconds))
+                                {
+                                    <div class="bookmark-item d-flex align-items-center justify-content-between py-2 px-2 border-bottom" data-bookmark-id="@bookmark.Id">
+                                        <div class="bookmark-info flex-grow-1" style="cursor: pointer;" onclick="bookmarkManager.seekTo(@bookmark.TimeInSeconds)">
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-primary me-2">@TimeSpan.FromSeconds(bookmark.TimeInSeconds).ToString(@"m\:ss")</span>
+                                                <span class="bookmark-name">@bookmark.Name</span>
+                                            </div>
+                                        </div>
+                                        <div class="bookmark-actions">
+                                            <button class="btn btn-sm btn-outline-secondary me-1" onclick="bookmarkManager.editBookmark(@bookmark.Id)" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="bookmarkManager.deleteBookmark(@bookmark.Id)" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-3">
+                                    <i class="bi bi-bookmark"></i>
+                                    <p class="mb-0 small">No bookmarks yet</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="card mt-3">
                 <div class="card-header">
                     <button class="btn btn-link p-0 text-decoration-none w-100 text-start"
@@ -784,6 +836,36 @@ document.addEventListener('keydown', function(e) {
     }
 </script>
 
+<script src="~/js/bookmarkManager.js"></script>
+<script>
+    let bookmarkManager;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const videoElement = document.getElementById('mainVideo'); // Your video element ID
+        const videoId = @Model.Video.Id;
+        
+        // Prepare initial bookmarks data
+        const bookmarks = [
+            @if (Model.Video.Bookmarks?.Any() == true)
+            {
+                @foreach (var bookmark in Model.Video.Bookmarks)
+                {
+                    @:{
+                        @:id: @bookmark.Id,
+                        @:videoId: @bookmark.VideoId,
+                        @:timeInSeconds: @bookmark.TimeInSeconds,
+                        @:name: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(bookmark.Name)),
+                        @:formattedTime: '@TimeSpan.FromSeconds(bookmark.TimeInSeconds).ToString(@"m\:ss")'
+                    @:},
+                }
+            }
+        ];
+        
+        // Initialize the bookmark manager
+        bookmarkManager = new BookmarkManager(videoElement, videoId, bookmarks);
+    });
+</script>
+
 <style>
 .notes-content {
     word-wrap: break-word;
@@ -854,5 +936,25 @@ document.addEventListener('keydown', function(e) {
     #titleInput {
         font-size: 1.5rem;
         font-weight: 500;
+    }
+
+    .bookmark-item {
+        transition: background-color 0.2s ease;
+    }
+
+        .bookmark-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .bookmark-item:last-child {
+            border-bottom: none !important;
+        }
+
+    .bookmark-info:hover .bookmark-name {
+        color: #0d6efd;
+    }
+
+    #bookmarksContainer .card-header:hover {
+        background-color: #f8f9fa;
     }
 </style>

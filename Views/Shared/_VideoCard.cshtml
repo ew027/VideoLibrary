@@ -1,0 +1,38 @@
+﻿@using VideoLibrary.Models.ViewModels
+@* Views/Shared/_VideoCard.cshtml *@
+@model VideoCardViewModel
+
+<div class="card h-100 shadow-sm">
+    <a asp-controller="Video" asp-action="Details" asp-route-id="@Model.Id" class="text-decoration-none">
+        @if (!string.IsNullOrEmpty(Model.ThumbnailPath))
+        {
+            <img src="@Url.Action("SmallThumbnail", "Video", new { id = Model.Id })" class="card-img-top" alt="@Model.Title" style="height: 120px; object-fit: cover;">
+        }
+        else
+        {
+            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 120px;">
+                <i class="bi bi-camera-video text-white" style="font-size: 3rem;"></i>
+            </div>
+        }
+    </a>
+    <div class="card-body p-2">
+        <h6 class="card-title mb-2">
+            <a asp-controller="Video" asp-action="Details" asp-route-id="@Model.Id" class="text-decoration-none text-dark">
+                @Model.Title
+            </a>
+        </h6>
+        @if (Model.Tags.Any())
+        {
+            <div class="d-flex flex-wrap gap-1">
+                @foreach (var tag in Model.Tags)
+                {
+                    <a asp-controller="Video" asp-action="ByTag" asp-route-tagId="@tag.Tag.Id"
+                       class="badge bg-primary text-decoration-none"
+                       style="font-size: 0.7rem;">
+                        @tag.Tag.Name
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>
