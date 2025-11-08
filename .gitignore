@@ -408,3 +408,8 @@ FodyWeavers.xsd
 /videolibrary.db-shm
 /videolibrary.db-wal
 /appsettings.json
+/src/VideoLibrary/appsettings.Development.json
+/src/VideoLibrary/appsettings.json
+/src/VideoLibrary/appsettings.Production.json
+/src/VideoLibrary/videolibrary.db
+/src/TagUtils/appsettings.json

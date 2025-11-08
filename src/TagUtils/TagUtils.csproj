@@ -1,10 +1,39 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<RootNamespace>VideoLibrary.TagUtils</RootNamespace>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Reference the main VideoLibrary project to use models and services -->
+		<ProjectReference Include="..\VideoLibrary\VideoLibrary.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- NuGet packages needed for the console app -->
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.9" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+		<PackageReference Include="EFCore.NamingConventions" Version="9.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Copy appsettings.json to output directory -->
+		<None Update="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Update="appsettings.Development.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
 </Project>

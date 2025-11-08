@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Reflection.Emit;
 using VideoLibrary.Models;
 
 namespace VideoLibrary.Services
@@ -161,75 +162,52 @@ namespace VideoLibrary.Services
         // MODIFICATION OPERATIONS
         // ============================================
 
-        /// <summary>
-        /// Insert a new tag as a child of the specified parent
-        /// If parentId is null, creates a new root tag
-        /// </summary>
         public async Task<Tag> InsertTagAsync(string name, int? parentId = null, string? thumbnailPath = null)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                int newLeft, newRight, level;
-
-                if (parentId.HasValue)
-                {
-                    var parent = await _context.Tags.FindAsync(parentId.Value);
-                    if (parent == null)
-                        throw new ArgumentException($"Parent tag with ID {parentId.Value} not found");
-
-                    // Insert as last child of parent (at parent.Right position)
-                    newLeft = parent.Right;
-                    newRight = parent.Right + 1;
-                    level = parent.Level + 1;
-
-                    // Make room for new node
-                    await _context.Database.ExecuteSqlRawAsync(
-                        @"UPDATE tags SET ""right"" = ""right"" + 2 WHERE ""right"" >= {0}", newLeft);
-                    await _context.Database.ExecuteSqlRawAsync(
-                        @"UPDATE tags SET ""left"" = ""left"" + 2 WHERE ""left"" > {0}", newLeft);
-                }
-                else
-                {
-                    // Insert as new root node at the end
-                    var maxRight = await _context.Tags.MaxAsync(t => (int?)t.Right) ?? 0;
-                    newLeft = maxRight + 1;
-                    newRight = maxRight + 2;
-                    level = 0;
-                }
 
                 var tag = new Tag
                 {
                     Name = name,
-                    Left = newLeft,
-                    Right = newRight,
-                    Level = level,
+                    Left = 0,
+                    Right = 0,
+                    Level = 0,
                     ParentId = parentId,
                     ThumbnailPath = thumbnailPath
                 };
 
                 _context.Tags.Add(tag);
                 await _context.SaveChangesAsync();
+
+                var newTagId = tag.Id;
+
+                // Rebuild tree to assign correct left/right/level values
+                await RebuildTreeInternalAsync();
+
                 await transaction.CommitAsync();
 
-                _logger.LogInformation(
-                    "Inserted tag '{Name}' (ID: {Id}) at position Left={Left}, Right={Right}, Level={Level}",
-                    name, tag.Id, newLeft, newRight, level);
+                _logger.LogInformation("Inserted new tag {TagId} ('{Name}') under parent {ParentId}",
+                    newTagId, name, parentId);
 
                 return tag;
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, "Failed to insert tag '{Name}'", name);
+                _logger.LogError(ex, "Failed to insert new tag '{Name}' under parent {ParentId}",
+                    name, parentId);
                 throw;
             }
         }
 
+
         /// <summary>
         /// Move a tag (and its entire subtree) to a new parent
-        /// This is the most complex operation in nested sets
+        /// SIMPLIFIED VERSION: Updates parent_id and rebuilds tree
+        /// This is slower but much more reliable and easier to understand
         /// </summary>
         public async Task MoveTagAsync(int tagId, int? newParentId)
         {
@@ -237,105 +215,50 @@ namespace VideoLibrary.Services
 
             try
             {
+                // Step 1: Validate the tag
                 var tag = await _context.Tags.FindAsync(tagId);
                 if (tag == null)
                     throw new ArgumentException($"Tag with ID {tagId} not found");
 
-                // Prevent moving a tag to itself or its descendants
+                // Step 2: Validate new parent
                 if (newParentId.HasValue)
                 {
                     if (newParentId.Value == tagId)
                         throw new InvalidOperationException("Cannot move tag to itself");
 
-                    if (await IsAncestorOfAsync(tagId, newParentId.Value))
-                        throw new InvalidOperationException("Cannot move tag to its own descendant");
-                }
-
-                // Calculate subtree size
-                int subtreeSize = tag.Right - tag.Left + 1;
-                int oldLeft = tag.Left;
-                int oldRight = tag.Right;
-                int oldLevel = tag.Level;
-
-                // Step 1: Temporarily move the subtree to negative space
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    UPDATE tags 
-                    SET ""left"" = 0 - ""left"",
-                        ""right"" = 0 - ""right""
-                    WHERE ""left"" >= {0} AND ""right"" <= {1}",
-                    oldLeft, oldRight);
-
-                // Step 2: Close the gap left by the moved subtree
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    UPDATE tags 
-                    SET ""left"" = ""left"" - {0}
-                    WHERE ""left"" > {1}",
-                    subtreeSize, oldRight);
-
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    UPDATE tags 
-                    SET ""right"" = ""right"" - {0}
-                    WHERE ""right"" > {1}",
-                    subtreeSize, oldRight);
-
-                // Step 3: Calculate new position
-                int newLeft, newLevel;
-                if (newParentId.HasValue)
-                {
-                    // Refresh parent data after gap closure
-                    await _context.Entry(await _context.Tags.FindAsync(newParentId.Value))
-                        .ReloadAsync();
-
                     var newParent = await _context.Tags.FindAsync(newParentId.Value);
                     if (newParent == null)
                         throw new ArgumentException($"New parent tag with ID {newParentId.Value} not found");
 
-                    newLeft = newParent.Right;
-                    newLevel = newParent.Level + 1;
+                    // Check for circular reference using current tree structure
+                    if (await IsAncestorOfAsync(tagId, newParentId.Value))
+                        throw new InvalidOperationException("Cannot move tag to its own descendant");
                 }
-                else
+
+                // Step 3: Check if already at target parent
+                if (tag.ParentId == newParentId)
                 {
-                    var maxRight = await _context.Tags
-                        .Where(t => t.Right > 0)
-                        .MaxAsync(t => (int?)t.Right) ?? 0;
-                    newLeft = maxRight + 1;
-                    newLevel = 0;
+                    _logger.LogInformation("Tag {TagId} already at parent {ParentId}, skipping",
+                        tagId, newParentId);
+                    await transaction.RollbackAsync();
+                    return;
                 }
 
-                // Step 4: Make room at new position
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    UPDATE tags 
-                    SET ""right"" = ""right"" + {0}
-                    WHERE ""right"" >= {1}",
-                    subtreeSize, newLeft);
-
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    UPDATE tags 
-                    SET ""left"" = ""left"" + {0}
-                    WHERE ""left"" >= {1}",
-                    subtreeSize, newLeft);
-
-                // Step 5: Move subtree to new position and adjust levels
-                int leftAdjustment = newLeft - oldLeft;
-                int levelAdjustment = newLevel - oldLevel;
-
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    UPDATE tags 
-                    SET ""left"" = 0 - ""left"" + {0},
-                        ""right"" = 0 - ""right"" + {0},
-                        ""level"" = ""level"" + {1}
-                    WHERE ""left"" < 0",
-                    leftAdjustment + oldLeft, levelAdjustment);
-
-                // Step 6: Update parent reference
+                // Step 4: Update parent reference
+                var oldParentId = tag.ParentId;
                 tag.ParentId = newParentId;
                 await _context.SaveChangesAsync();
+
+                // Step 5: Rebuild the entire tree to recalculate left/right/level values
+                // This is the key: instead of trying to manually adjust all the values,
+                // we just rebuild from the parent relationships
+                await RebuildTreeInternalAsync();
 
                 await transaction.CommitAsync();
 
                 _logger.LogInformation(
-                    "Moved tag {TagId} ('{Name}') to parent {ParentId}",
-                    tagId, tag.Name, newParentId);
+                    "Moved tag {TagId} ('{Name}') from parent {OldParent} to parent {NewParent}",
+                    tagId, tag.Name, oldParentId, newParentId);
             }
             catch (Exception ex)
             {
@@ -369,19 +292,6 @@ namespace VideoLibrary.Services
                         WHERE ""left"" >= {0} AND ""right"" <= {1}",
                         tag.Left, tag.Right);
 
-                    // Close the gap
-                    await _context.Database.ExecuteSqlRawAsync(@"
-                        UPDATE tags 
-                        SET ""right"" = ""right"" - {0}
-                        WHERE ""right"" > {1}",
-                        subtreeSize, tag.Right);
-
-                    await _context.Database.ExecuteSqlRawAsync(@"
-                        UPDATE tags 
-                        SET ""left"" = ""left"" - {0}
-                        WHERE ""left"" > {1}",
-                        subtreeSize, tag.Right);
-
                     _logger.LogInformation(
                         "Deleted tag {TagId} ('{Name}') and {Count} descendants",
                         tagId, tag.Name, (subtreeSize - 1) / 2);
@@ -398,25 +308,16 @@ namespace VideoLibrary.Services
 
                     _context.Tags.Remove(tag);
 
-                    // Adjust left/right values
-                    await _context.Database.ExecuteSqlRawAsync(@"
-                        UPDATE tags 
-                        SET ""right"" = ""right"" - 2
-                        WHERE ""right"" > {0}",
-                        tag.Right);
-
-                    await _context.Database.ExecuteSqlRawAsync(@"
-                        UPDATE tags 
-                        SET ""left"" = ""left"" - 2
-                        WHERE ""left"" > {0}",
-                        tag.Right);
-
                     _logger.LogInformation(
                         "Deleted tag {TagId} ('{Name}'), promoted {Count} children",
                         tagId, tag.Name, children.Count);
                 }
 
                 await _context.SaveChangesAsync();
+
+                // Rebuild tree to fix left/right/level values
+                await RebuildTreeInternalAsync();
+
                 await transaction.CommitAsync();
             }
             catch (Exception ex)
@@ -428,8 +329,51 @@ namespace VideoLibrary.Services
         }
 
         /// <summary>
-        /// Rebuild the entire tree structure from parent references
-        /// Useful after direct database modifications or data import
+        /// Internal rebuild method that doesn't create its own transaction
+        /// Used by MoveTagAsync which already has a transaction open
+        /// </summary>
+        private async Task RebuildTreeInternalAsync()
+        {
+            _logger.LogInformation("Rebuilding tree structure after move");
+
+            var allTags = await _context.Tags.ToListAsync();
+            int counter = 0;
+
+            void RebuildNode(Tag tag, int level)
+            {
+                tag.Left = ++counter;
+                tag.Level = level;
+
+                var children = allTags
+                    .Where(t => t.ParentId == tag.Id)
+                    .OrderBy(t => t.Name)
+                    .ToList();
+
+                foreach (var child in children)
+                {
+                    RebuildNode(child, level + 1);
+                }
+
+                tag.Right = ++counter;
+            }
+
+            var roots = allTags
+                .Where(t => t.ParentId == null)
+                .OrderBy(t => t.Name)
+                .ToList();
+
+            foreach (var root in roots)
+            {
+                RebuildNode(root, 0);
+            }
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Tree rebuild completed. Processed {Count} tags", allTags.Count);
+        }
+
+        /// <summary>
+        /// Public rebuild method (keeps existing implementation with its own transaction)
         /// </summary>
         public async Task RebuildTreeAsync()
         {
@@ -437,44 +381,10 @@ namespace VideoLibrary.Services
 
             try
             {
-                _logger.LogInformation("Starting tag tree rebuild");
-
-                var allTags = await _context.Tags
-                    .Include(t => t.Children)
-                    .ToListAsync();
-
-                int counter = 0;
-
-                void RebuildNode(Tag tag, int level)
-                {
-                    tag.Left = ++counter;
-                    tag.Level = level;
-
-                    var children = allTags.Where(t => t.ParentId == tag.Id)
-                        .OrderBy(t => t.Name)
-                        .ToList();
-
-                    foreach (var child in children)
-                    {
-                        RebuildNode(child, level + 1);
-                    }
-
-                    tag.Right = ++counter;
-                }
-
-                var roots = allTags.Where(t => t.ParentId == null)
-                    .OrderBy(t => t.Name)
-                    .ToList();
-
-                foreach (var root in roots)
-                {
-                    RebuildNode(root, 0);
-                }
-
-                await _context.SaveChangesAsync();
+                await RebuildTreeInternalAsync();
                 await transaction.CommitAsync();
 
-                _logger.LogInformation("Tag tree rebuild completed. Processed {Count} tags", allTags.Count);
+                _logger.LogInformation("Tag tree structure rebuilt successfully");
             }
             catch (Exception ex)
             {
