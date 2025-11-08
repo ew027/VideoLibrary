@@ -407,3 +407,4 @@ FodyWeavers.xsd
 /videolibrary.db
 /videolibrary.db-shm
 /videolibrary.db-wal
+/appsettings.json
