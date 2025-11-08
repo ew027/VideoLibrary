@@ -4,6 +4,7 @@ using Moq;
 using VideoLibrary.Models;
 using VideoLibrary.Services;
 using Xunit;
+using Microsoft.Data.Sqlite;
 
 namespace VideoLibrary.Tests.Services
 {
@@ -12,18 +13,25 @@ namespace VideoLibrary.Tests.Services
     /// </summary>
     public class TagHierarchyServiceTests : IDisposable
     {
+        private readonly SqliteConnection _connection;
+        private readonly DbContextOptions<AppDbContext> _contextOptions;
         private readonly AppDbContext _context;
         private readonly TagHierarchyService _service;
         private readonly ILogger<TagHierarchyService> _logger;
 
         public TagHierarchyServiceTests()
         {
-            // Setup InMemory database with unique name for each test
-            var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            // Create and open a connection. This creates the SQLite in-memory database
+            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection.Open();
+
+            _contextOptions = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite(_connection)
                 .Options;
 
-            _context = new AppDbContext(options);
+            // Create the schema in the database
+            using var context = new AppDbContext(_contextOptions);
+            context.Database.EnsureCreated();
 
             // Setup mock logger
             var mockLogger = new Mock<ILogger<TagHierarchyService>>();
