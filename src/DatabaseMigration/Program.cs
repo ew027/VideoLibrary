@@ -13,8 +13,8 @@ namespace VideoLibrary.Migration
             Console.WriteLine("Starting Video Library Database Migration...");
 
             // Configuration
-            var sqliteConnectionString = "Data Source=c:\\data\\github\\VideoLibrary\\videolibrary.db"; // Your SQLite database path
-            var postgresConnectionString = "Host=192.168.40.225;Database=videolibrary_dev;Username=vidlibusr;Password=trueToForm21";
+            var sqliteConnectionString = "Data Source=videolibrary.db"; // Your SQLite database path
+            var postgresConnectionString = "Host=;Database=videolibrary_dev;Username=vidlibusr;Password=";
 
             // Create host with dependency injection
             var host = Host.CreateDefaultBuilder(args)
