@@ -168,6 +168,15 @@ namespace VideoLibrary.Services
 
             try
             {
+                if (parentId.HasValue)
+                {
+                    var parent = await _context.Tags.FindAsync(parentId.Value);
+
+                    if (parent is null)
+                    {
+                        throw new ArgumentException("Invalid parent tag ID");
+                    }
+                }
 
                 var tag = new Tag
                 {
@@ -278,6 +287,7 @@ namespace VideoLibrary.Services
             try
             {
                 var tag = await _context.Tags.FindAsync(tagId);
+
                 if (tag == null)
                     throw new ArgumentException($"Tag with ID {tagId} not found");
 
@@ -291,6 +301,8 @@ namespace VideoLibrary.Services
                         DELETE FROM tags 
                         WHERE ""left"" >= {0} AND ""right"" <= {1}",
                         tag.Left, tag.Right);
+
+                    _context.ChangeTracker.Clear();
 
                     _logger.LogInformation(
                         "Deleted tag {TagId} ('{Name}') and {Count} descendants",
@@ -336,7 +348,7 @@ namespace VideoLibrary.Services
         {
             _logger.LogInformation("Rebuilding tree structure after move");
 
-            var allTags = await _context.Tags.ToListAsync();
+            var allTags = await _context.Tags.OrderBy(t => t.Name).ToListAsync();
             int counter = 0;
 
             void RebuildNode(Tag tag, int level)

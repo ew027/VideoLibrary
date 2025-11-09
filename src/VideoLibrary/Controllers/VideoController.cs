@@ -541,6 +541,78 @@ namespace VideoLibrary.Controllers
             return RedirectToAction(nameof(Details), new { id = videoId });
         }
 
+        /// <summary>
+        /// Get all available thumbnails for a tag (from videos and galleries)
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetTagThumbnails(int tagId)
+        {
+            var thumbnails = new List<object>();
+
+            // Get video thumbnails
+            var videos = await _context.Videos
+                .Include(v => v.VideoTags)
+                .Where(v => v.VideoTags.Any(vt => vt.TagId == tagId) && !string.IsNullOrEmpty(v.ThumbnailPath))
+                .Select(v => new
+                {
+                    Type = "video",
+                    Id = v.Id,
+                    Title = v.Title,
+                    ThumbnailPath = v.ThumbnailPath
+                })
+                .ToListAsync();
+
+            thumbnails.AddRange(videos);
+
+            // Get gallery thumbnails
+            var galleries = await _context.Galleries
+                .Include(g => g.GalleryTags)
+                .Where(g => g.GalleryTags.Any(gt => gt.TagId == tagId) && !string.IsNullOrEmpty(g.ThumbnailPath))
+                .Select(g => new
+                {
+                    Type = "gallery",
+                    Id = g.Id,
+                    Title = g.Name,
+                    ThumbnailPath = g.ThumbnailPath,
+                    g.FolderPath
+                })
+                .ToListAsync();
+
+            thumbnails.AddRange(galleries);
+
+            return Json(new { success = true, thumbnails });
+        }
+
+        /// <summary>
+        /// Set a specific thumbnail for a tag
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> SetTagThumbnail(int tagId, string thumbnailPath)
+        {
+            try
+            {
+                var tag = await _context.Tags.FindAsync(tagId);
+                if (tag == null)
+                {
+                    return Json(new { success = false, message = "Tag not found" });
+                }
+
+                tag.ThumbnailPath = thumbnailPath;
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Updated thumbnail for tag {TagId} ({TagName}) to {ThumbnailPath}",
+                    tagId, tag.Name, thumbnailPath);
+
+                return Json(new { success = true, message = "Thumbnail updated successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting tag thumbnail for tag {TagId}", tagId);
+                return Json(new { success = false, message = "Failed to update thumbnail" });
+            }
+        }
+
+
         private string GetContentType(string filePath)
         {
             var extension = Path.GetExtension(filePath).ToLowerInvariant();

@@ -219,6 +219,169 @@ namespace VideoLibrary.Controllers
             return View(filteredTags);
         }
 
+        public async Task<IActionResult> TagsWithService([FromServices] TagHierarchyService tagHierarchyService, int showArchived = 0)
+        {
+            try
+            {
+                // 1 = all, 2 = current, 3 = archived
+                if (showArchived == 0)
+                {
+                    if (int.TryParse(HttpContext.Request.Cookies["showArchived"], out var cookieValue))
+                    {
+                        showArchived = cookieValue;
+                    }
+                    else
+                    {
+                        // no cookie so default to current and set cookie
+                        showArchived = 2;
+                        HttpContext.Response.Cookies.Append("showArchived", "2");
+                    }
+                }
+                else
+                {
+                    // specified value so set the cookie - should validate here but meh
+                    HttpContext.Response.Cookies.Append("showArchived", showArchived.ToString());
+                }
+
+                var tags = _context.Tags
+                                .Where(t => _context.VideoTags.Any(vt => vt.TagId == t.Id) ||
+                                            _context.PlaylistTags.Any(vt => vt.TagId == t.Id) ||
+                                            _context.GalleryTags.Any(gt => gt.TagId == t.Id) ||
+                                            _context.ContentTags.Any(gt => gt.TagId == t.Id))
+                                .Include(tag => tag.VideoTags)
+                                .Include(tag => tag.GalleryTags)
+                                .Include(tag => tag.PlaylistTags)
+                                .Include(tag => tag.ContentTags)
+                                .AsSplitQuery()
+                                .OrderBy(t => t.Name);
+                //.ToListAsync();
+
+                List<Tag> filteredTags = null;
+
+                if (showArchived == 3)
+                {
+                    filteredTags = await tags.Where(x => x.IsArchived == true).ToListAsync();
+                }
+                else if (showArchived == 2)
+                {
+                    filteredTags = await tags.Where(x => x.IsArchived == false).ToListAsync();
+                }
+                else
+                {
+                    filteredTags = await tags.ToListAsync();
+                }
+
+                var viewModel = new GroupedTagsViewModel
+                {
+                    AllTags = filteredTags
+                };
+
+                // Get root tags
+                var rootTags = await tagHierarchyService.GetRootTagsAsync();
+                rootTags = rootTags.Where(r => filteredTags.Any(t => t.Id == r.Id)).ToList();
+
+                foreach (var rootTag in rootTags)
+                {
+                    var rootViewModel = new TagGroupViewModel
+                    {
+                        Id = rootTag.Id,
+                        Name = rootTag.Name,
+                        ThumbnailPath = rootTag.ThumbnailPath,
+                        ChildCount = 0,
+                        DirectContentCount = rootTag.VideoTags.Count +
+                                            rootTag.GalleryTags.Count +
+                                            rootTag.PlaylistTags.Count +
+                                            rootTag.ContentTags.Count
+                    };
+
+                    // Get descendants and calculate total
+                    var descendantIds = await tagHierarchyService.GetDescendantIdsAsync(rootTag.Id, includeSelf: false);
+                    var descendants = filteredTags.Where(t => descendantIds.Contains(t.Id)).ToList();
+
+                    rootViewModel.TotalCount = rootViewModel.DirectContentCount;
+                    foreach (var desc in descendants)
+                    {
+                        rootViewModel.TotalCount += desc.VideoTags.Count +
+                                                   desc.GalleryTags.Count +
+                                                   desc.PlaylistTags.Count +
+                                                   desc.ContentTags.Count;
+                    }
+
+                    // Get immediate children
+                    var children = await tagHierarchyService.GetChildrenAsync(rootTag.Id);
+                    children = children.Where(c => filteredTags.Any(t => t.Id == c.Id))
+                                     .OrderBy(c => c.Name)
+                                     .ToList();
+
+                    rootViewModel.ChildCount = children.Count;
+
+                    foreach (var child in children)
+                    {
+                        var childViewModel = new TagCardViewModel
+                        {
+                            Id = child.Id,
+                            Name = child.Name,
+                            ThumbnailPath = child.ThumbnailPath,
+                            ContentCount = child.VideoTags.Count +
+                                          child.GalleryTags.Count +
+                                          child.PlaylistTags.Count +
+                                          child.ContentTags.Count,
+                            Summary = child.GetSummary(),
+                            Level = child.Level,
+                            ParentId = child.ParentId
+                        };
+
+                        rootViewModel.Children.Add(childViewModel);
+                    }
+
+                    viewModel.RootTags.Add(rootViewModel);
+                }
+
+                // Get orphan tags (no parent or parent not in root tags)
+                var rootTagIds = rootTags.Select(r => r.Id).ToList();
+                var orphanTags = filteredTags
+                    .Where(t => !t.ParentId.HasValue && t.Level > 0 ||
+                               (t.ParentId.HasValue && !rootTagIds.Contains(t.ParentId.Value)))
+                    .OrderBy(t => t.Name)
+                    .ToList();
+
+                foreach (var orphan in orphanTags)
+                {
+                    viewModel.OrphanTags.Add(new TagCardViewModel
+                    {
+                        Id = orphan.Id,
+                        Name = orphan.Name,
+                        ThumbnailPath = orphan.ThumbnailPath,
+                        ContentCount = orphan.VideoTags.Count +
+                                      orphan.GalleryTags.Count +
+                                      orphan.PlaylistTags.Count +
+                                      orphan.ContentTags.Count,
+                        Summary = orphan.GetSummary(),
+                        Level = orphan.Level,
+                        ParentId = orphan.ParentId
+                    });
+                }
+
+                // Setup ViewBag
+                ViewBag.ArchivedViewOptions = new SelectList(new[]
+                {
+                    new { Value = "1", Text = "All Tags" },
+                    new { Value = "2", Text = "Current Only" },
+                    new { Value = "3", Text = "Archived Only" }
+                }, "Value", "Text", showArchived);
+
+                ViewBag.IsSearch = false;
+
+                return View("Tags", viewModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading tags page");
+                return View("Tags", new GroupedTagsViewModel());
+            }
+        }
+
+
         public async Task<IActionResult> Search(string q)
         {
             q = q.Trim();

@@ -1,0 +1,464 @@
+@model VideoLibrary.Models.ViewModels.GroupedTagsViewModel
+
+@{
+    ViewData["Title"] = "Video Tags";
+}
+
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-tags-fill"></i> Browse Tags</h1>
+            <p class="text-muted">Explore content by category</p>
+        </div>
+        <div class="col-md-4">
+            <form method="get" action="@Url.Action("Tags", "Home")">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-filter"></i></span>
+                    <select asp-items="@ViewBag.ArchivedViewOptions" name="showArchived" 
+                            class="form-select" onchange="this.form.submit()">
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Navigation -->
+    @if (Model.RootTags.Any())
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                    <h6 class="mb-2 mb-md-0"><i class="bi bi-compass"></i> Quick Jump:</h6>
+                    <div class="btn-group" role="group">
+                        @foreach (var rootTag in Model.RootTags)
+                        {
+                            <a href="#tag-@rootTag.Id" class="btn btn-outline-primary btn-sm">
+                                @rootTag.Name
+                                <span class="badge bg-primary ms-1">@rootTag.TotalCount</span>
+                            </a>
+                        }
+                        @if (Model.OrphanTags.Any())
+                        {
+                            <a href="#orphan-tags" class="btn btn-outline-secondary btn-sm">
+                                Other Tags
+                                <span class="badge bg-secondary ms-1">@Model.OrphanTags.Count</span>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Tag Browser (Multi-select filter - collapsible) -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <button class="btn btn-link p-0 text-decoration-none w-100 text-start" 
+                    type="button" data-bs-toggle="collapse" data-bs-target="#tagPanel">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-funnel"></i> Advanced Filter
+                    </h5>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+            </button>
+        </div>
+        <div class="collapse" id="tagPanel">
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="tag-input-container">
+                        <div class="selected-tags" id="selectedTags"></div>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="tagSearch" 
+                                   placeholder="Start typing to search tags..." autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" onclick="clearAllTags()">
+                                <i class="bi bi-x"></i> Clear
+                            </button>
+                        </div>
+                        <div class="dropdown-menu" id="tagDropdown" style="display: none;"></div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted" id="selectedTagsCount">No tags selected</span>
+                    <button type="button" class="btn btn-primary" onclick="viewSelectedTags()" 
+                            id="viewTagsBtn" disabled>
+                        <i class="bi bi-eye"></i> View Content
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grouped Tags Section -->
+    @foreach (var rootTag in Model.RootTags)
+    {
+        <section id="tag-@rootTag.Id" class="mb-5">
+            <!-- Root Tag Header -->
+            <div class="tag-group-header mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">
+                            <i class="bi bi-folder-fill text-primary"></i>
+                            <a href="@Url.Action("ByTag", "Video", new { tagId = rootTag.Id })" 
+                               class="text-decoration-none">
+                                @rootTag.Name
+                            </a>
+                        </h2>
+                        <p class="text-muted mb-0">
+                            @rootTag.ChildCount @(rootTag.ChildCount == 1 ? "category" : "categories"), 
+                            @rootTag.TotalCount total items
+                        </p>
+                    </div>
+                    <div>
+                        @if (rootTag.ChildCount > 0)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary toggle-children" 
+                                    data-target="children-@rootTag.Id">
+                                <i class="bi bi-chevron-down"></i>
+                                <span class="toggle-text">Show All</span>
+                            </button>
+                        }
+                        <a href="@Url.Action("ByTag", "Video", new { tagId = rootTag.Id })" 
+                           class="btn btn-sm btn-primary">
+                            <i class="bi bi-eye"></i> View All
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Root Tag Card (if has direct content) -->
+            @if (rootTag.DirectContentCount > 0)
+            {
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <div class="card tag-card h-100">
+                            <a href="@Url.Action("ByTag", "Video", new { tagId = rootTag.Id })" 
+                               class="text-decoration-none">
+                                @if (!string.IsNullOrEmpty(rootTag.ThumbnailPath))
+                                {
+                                    <img src="@Url.Action("Thumbnail", "Video", new { path = rootTag.ThumbnailPath })" 
+                                         class="card-img-top tag-thumbnail" alt="@rootTag.Name">
+                                }
+                                else
+                                {
+                                    <div class="card-img-top tag-thumbnail-placeholder">
+                                        <i class="bi bi-folder-fill"></i>
+                                    </div>
+                                }
+                                <div class="card-body">
+                                    <h5 class="card-title text-primary">@rootTag.Name</h5>
+                                    <p class="card-text text-muted small mb-0">
+                                        @rootTag.DirectContentCount items directly tagged
+                                    </p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Child Tags -->
+            @if (rootTag.Children.Any())
+            {
+                <div id="children-@rootTag.Id" class="child-tags-container" style="display: none;">
+                    <div class="child-tags-header mb-2">
+                        <h5 class="text-muted">
+                            <i class="bi bi-diagram-3"></i>
+                            Categories under @rootTag.Name
+                        </h5>
+                    </div>
+                    <div class="row g-3">
+                        @foreach (var childTag in rootTag.Children)
+                        {
+                            <div class="col-md-3 col-sm-6">
+                                <div class="card tag-card h-100 child-tag-card">
+                                    <a href="@Url.Action("ByTag", "Video", new { tagId = childTag.Id })" 
+                                       class="text-decoration-none">
+                                        @if (!string.IsNullOrEmpty(childTag.ThumbnailPath))
+                                        {
+                                            <img src="@Url.Action("Thumbnail", "Video", new { path = childTag.ThumbnailPath })" 
+                                                 class="card-img-top tag-thumbnail" alt="@childTag.Name">
+                                        }
+                                        else
+                                        {
+                                            <div class="card-img-top tag-thumbnail-placeholder">
+                                                <i class="bi bi-tag-fill"></i>
+                                            </div>
+                                        }
+                                        <div class="card-body">
+                                            <h6 class="card-title">@childTag.Name</h6>
+                                            <p class="card-text text-muted small">
+                                                <i class="bi bi-collection"></i> @childTag.ContentCount items
+                                            </p>
+                                            @if (!string.IsNullOrEmpty(childTag.Summary))
+                                            {
+                                                <p class="card-text small">@childTag.Summary</p>
+                                            }
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <hr class="my-4">
+        </section>
+    }
+
+    <!-- Orphan Tags (tags without parents) -->
+    @if (Model.OrphanTags.Any())
+    {
+        <section id="orphan-tags" class="mb-5">
+            <div class="tag-group-header mb-3">
+                <h2>
+                    <i class="bi bi-tags text-secondary"></i>
+                    Other Tags
+                </h2>
+                <p class="text-muted">Tags not organized under a category</p>
+            </div>
+
+            <div class="row g-3">
+                @foreach (var tag in Model.OrphanTags)
+                {
+                    <div class="col-md-3 col-sm-6">
+                        <div class="card tag-card h-100">
+                            <a href="@Url.Action("ByTag", "Video", new { tagId = tag.Id })" 
+                               class="text-decoration-none">
+                                @if (!string.IsNullOrEmpty(tag.ThumbnailPath))
+                                {
+                                    <img src="@Url.Action("Thumbnail", "Video", new { path = tag.ThumbnailPath })" 
+                                         class="card-img-top tag-thumbnail" alt="@tag.Name">
+                                }
+                                else
+                                {
+                                    <div class="card-img-top tag-thumbnail-placeholder">
+                                        <i class="bi bi-tag-fill"></i>
+                                    </div>
+                                }
+                                <div class="card-body">
+                                    <h6 class="card-title">@tag.Name</h6>
+                                    <p class="card-text text-muted small">
+                                        <i class="bi bi-collection"></i> @tag.ContentCount items
+                                    </p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    <!-- Empty State -->
+    @if (!Model.RootTags.Any() && !Model.OrphanTags.Any())
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-tags" style="font-size: 4rem; color: #ccc;"></i>
+            <h3 class="mt-3 text-muted">No Tags Found</h3>
+            <p class="text-muted">Tags will appear here once content is tagged</p>
+        </div>
+    }
+</div>
+
+<style>
+/* Tag Cards */
+.tag-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #e0e0e0;
+}
+
+.tag-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.tag-thumbnail {
+    height: 180px;
+    object-fit: cover;
+}
+
+.tag-thumbnail-placeholder {
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 4rem;
+}
+
+.child-tag-card {
+    border-left: 3px solid #0d6efd;
+}
+
+.child-tag-card .tag-thumbnail {
+    height: 150px;
+}
+
+.child-tag-card .tag-thumbnail-placeholder {
+    height: 150px;
+    font-size: 3rem;
+    background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+}
+
+/* Group Headers */
+.tag-group-header {
+    border-left: 4px solid #0d6efd;
+    padding-left: 1rem;
+}
+
+.child-tags-container {
+    margin-left: 2rem;
+    padding-left: 1rem;
+    border-left: 2px solid #e9ecef;
+}
+
+.child-tags-header {
+    margin-left: -1rem;
+}
+
+/* Toggle Buttons */
+.toggle-children i {
+    transition: transform 0.2s;
+}
+
+.toggle-children.expanded i {
+    transform: rotate(180deg);
+}
+
+/* Tag Input (Advanced Filter) */
+.tag-input-container {
+    position: relative;
+}
+
+.selected-tags {
+    min-height: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.selected-tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.selected-tag .btn-close {
+    padding: 0;
+    margin: 0;
+    width: 0.8rem;
+    height: 0.8rem;
+    background-size: 0.6rem;
+}
+
+.dropdown-menu {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-item {
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 1rem;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .child-tags-container {
+        margin-left: 0;
+        padding-left: 0;
+        border-left: none;
+    }
+    
+    .tag-group-header {
+        border-left-width: 2px;
+        padding-left: 0.5rem;
+    }
+}
+</style>
+
+<script src="~/js/multiTagSelector.js"></script>
+<script>
+// Toggle child tags visibility
+document.addEventListener('DOMContentLoaded', function() {
+    // Multi-tag selector
+    let multiTagSelector = new MultiTagSelector({
+        tagSearchId: 'tagSearch',
+        tagDropdownId: 'tagDropdown',
+        tagData: @Html.Raw(Json.Serialize(Model.AllTags.Select(t => new { id = t.Id, name = t.Name }))),
+        selectedTagsContainerId: 'selectedTags',
+    });
+
+    window.multiTagSelector = multiTagSelector;
+
+    // Toggle children visibility
+    document.querySelectorAll('.toggle-children').forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.dataset.target;
+            const container = document.getElementById(targetId);
+            const icon = this.querySelector('i');
+            const text = this.querySelector('.toggle-text');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                icon.className = 'bi bi-chevron-up';
+                text.textContent = 'Hide';
+                this.classList.add('expanded');
+            } else {
+                container.style.display = 'none';
+                icon.className = 'bi bi-chevron-down';
+                text.textContent = 'Show All';
+                this.classList.remove('expanded');
+            }
+        });
+    });
+
+    // Smooth scroll to anchors
+    document.querySelectorAll('a[href^="#tag-"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                // Expand children if collapsed
+                const toggleBtn = target.querySelector('.toggle-children');
+                if (toggleBtn && !toggleBtn.classList.contains('expanded')) {
+                    toggleBtn.click();
+                }
+            }
+        });
+    });
+});
+
+// Global functions for multi-tag selector
+function addTagToSelection(tagId, tagName) {
+    if (window.multiTagSelector) {
+        window.multiTagSelector.selectTag(tagId, tagName);
+    }
+}
+
+function clearAllTags() {
+    if (window.multiTagSelector) {
+        window.multiTagSelector.clear();
+    }
+}
+
+function viewSelectedTags() {
+    if (window.multiTagSelector) {
+        window.multiTagSelector.viewSelected();
+    }
+}
+</script>

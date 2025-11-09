@@ -1,10 +1,12 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
 using Moq;
 using VideoLibrary.Models;
 using VideoLibrary.Services;
 using Xunit;
-using Microsoft.Data.Sqlite;
+using Xunit.Abstractions;
 
 namespace VideoLibrary.Tests.Services
 {
@@ -18,8 +20,9 @@ namespace VideoLibrary.Tests.Services
         private readonly AppDbContext _context;
         private readonly TagHierarchyService _service;
         private readonly ILogger<TagHierarchyService> _logger;
+        private readonly ITestOutputHelper _output;
 
-        public TagHierarchyServiceTests()
+        public TagHierarchyServiceTests(ITestOutputHelper output)
         {
             // Create and open a connection. This creates the SQLite in-memory database
             _connection = new SqliteConnection("DataSource=:memory:");
@@ -30,14 +33,20 @@ namespace VideoLibrary.Tests.Services
                 .Options;
 
             // Create the schema in the database
-            using var context = new AppDbContext(_contextOptions);
-            context.Database.EnsureCreated();
+            _context = new AppDbContext(_contextOptions);
+            _context.Database.EnsureCreated();
 
-            // Setup mock logger
-            var mockLogger = new Mock<ILogger<TagHierarchyService>>();
-            _logger = mockLogger.Object;
+            _output = output;
+
+            var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddProvider(new XunitLoggerProvider(_output));
+            });
+
+            _logger = loggerFactory.CreateLogger<TagHierarchyService>();
 
             _service = new TagHierarchyService(_context, _logger);
+
         }
 
         public void Dispose()
@@ -98,11 +107,12 @@ namespace VideoLibrary.Tests.Services
             Assert.Equal(1, movies.Left);
             Assert.Equal(2, movies.Right);
 
-            Assert.Equal(3, tv.Left);
-            Assert.Equal(4, tv.Right);
+            // root tags should be in alphabetical order so expect tv to be last
+            Assert.Equal(5, tv.Left);
+            Assert.Equal(6, tv.Right);
 
-            Assert.Equal(5, shorts.Left);
-            Assert.Equal(6, shorts.Right);
+            Assert.Equal(3, shorts.Left);
+            Assert.Equal(4, shorts.Right);
         }
 
         [Fact]

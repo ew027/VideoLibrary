@@ -22,6 +22,10 @@
     </ol>
 </nav>
 
+<form id="tokenForm" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
 <div class="d-flex align-items-center mb-3" id="titleContainer">
     <!-- Display Mode -->
     <div id="titleDisplay" class="d-flex align-items-center">
@@ -865,6 +869,7 @@ document.addEventListener('keydown', function(e) {
         bookmarkManager = new BookmarkManager(videoElement, videoId, bookmarks);
     });
 </script>
+<script src="~/js/tagThumbnailPicker.js"></script>
 
 <style>
 .notes-content {
