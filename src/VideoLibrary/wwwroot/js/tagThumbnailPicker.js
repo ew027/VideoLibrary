@@ -100,25 +100,25 @@ class TagThumbnailPicker {
         grid.innerHTML = '';
 
         thumbnails.forEach(item => {
-            const isSelected = item.ThumbnailPath === this.currentThumbnailPath;
-            const thumbnailUrl = item.Type === 'video' 
-                ? `/Video/SmallThumbnail?id=${item.Id}`
-                : `/Gallery/Thumbnail?galleryId=${item.Id}&fileName=${item.ThumbnailPath}`;
+            const isSelected = item.thumbnailPath === this.currentThumbnailPath;
+            const thumbnailUrl = item.type === 'video' 
+                ? `/Video/SmallThumbnail/${item.id}`
+                : `/Gallery/Thumbnail?galleryId=${item.id}&fileName=${item.thumbnailPath}`;
 
             const col = document.createElement('div');
             col.className = 'col-lg-2 col-md-3 col-sm-4 col-6';
             col.innerHTML = `
                 <div class="card thumbnail-option ${isSelected ? 'border-primary border-3' : ''}" 
-                     data-thumbnail-path="${item.ThumbnailPath}"
+                     data-thumbnail-path="${item.thumbnailPath}"
                      style="cursor: pointer;">
                     <img src="${thumbnailUrl}" 
                          class="card-img-top" 
-                         alt="${item.Title}"
+                         alt="${item.title}"
                          style="height: 150px; object-fit: cover;">
                     <div class="card-body p-2">
                         <p class="card-text small mb-1">
-                            <i class="bi bi-${item.Type === 'video' ? 'camera-video' : 'images'}"></i>
-                            ${item.Title}
+                            <i class="bi bi-${item.type === 'video' ? 'camera-video' : 'images'}"></i>
+                            ${item.title}
                         </p>
                         ${isSelected ? '<span class="badge bg-primary w-100">Current</span>' : ''}
                     </div>
@@ -126,7 +126,7 @@ class TagThumbnailPicker {
             `;
 
             col.querySelector('.thumbnail-option').addEventListener('click', () => {
-                this.selectThumbnail(item.ThumbnailPath);
+                this.selectThumbnail(item.thumbnailPath);
             });
 
             grid.appendChild(col);

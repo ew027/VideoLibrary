@@ -114,3 +114,17 @@ a.video-link {
 .text-bright-green {
     color: #28a745 !important;
 }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .child-tags-container {
+        margin-left: 0;
+        padding-left: 0;
+        border-left: none;
+    }
+
+    .tag-group-header {
+        border-left-width: 2px;
+        padding-left: 0.5rem;
+    }
+}

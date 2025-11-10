@@ -173,6 +173,26 @@ namespace VideoLibrary.Controllers
             return File(fileStream, contentType);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SetThumbnail(int galleryId, string fileName)
+        {
+            var gallery = await _context.Galleries.FindAsync(galleryId);
+            if (gallery == null)
+            {
+                return NotFound();
+            }
+
+            var filenameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+            var extension = Path.GetExtension(fileName);
+
+            var thumbnailPath = Path.Combine(gallery.FolderPath, "thumbnails", $"{filenameWithoutExtension}_thumb{extension}");
+            
+            gallery.ThumbnailPath = thumbnailPath;
+            await _context.SaveChangesAsync();
+            
+            return RedirectToAction(nameof(Details), new { id = galleryId });
+        }
+
         public IActionResult Medium(int galleryId, string fileName)
         {
             var gallery = _context.Galleries.Find(galleryId);

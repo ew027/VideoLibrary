@@ -87,6 +87,13 @@
                        class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-grid"></i> Back to Gallery
                     </a>
+                    <form asp-action="SetThumbnail" asp-controller="Gallery" class="d-inline">
+                        <input type="hidden" name="galleryId" value="@Model.Gallery.Id">
+                        <input type="hidden" name="fileName" value="@Model.CurrentImage!.FileName">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            Set as thumbnail
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

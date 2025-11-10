@@ -177,7 +177,7 @@
                                        class="text-decoration-none">
                                         @if (!string.IsNullOrEmpty(childTag.ThumbnailPath))
                                         {
-                                            <img src="@Url.Action("Thumbnail", "Video", new { path = childTag.ThumbnailPath })" 
+                                            <img src="@Url.Action("SmallThumbnail", "Home", new { id = childTag.Id })"
                                                  class="card-img-top tag-thumbnail" alt="@childTag.Name">
                                         }
                                         else
@@ -374,19 +374,7 @@
     background-color: #f8f9fa;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .child-tags-container {
-        margin-left: 0;
-        padding-left: 0;
-        border-left: none;
-    }
-    
-    .tag-group-header {
-        border-left-width: 2px;
-        padding-left: 0.5rem;
-    }
-}
+
 </style>
 
 <script src="~/js/multiTagSelector.js"></script>

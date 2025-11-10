@@ -219,7 +219,7 @@ namespace VideoLibrary.Controllers
             return View(filteredTags);
         }
 
-        public async Task<IActionResult> TagsWithService([FromServices] TagHierarchyService tagHierarchyService, int showArchived = 0)
+        public async Task<IActionResult> TagsNew([FromServices] TagHierarchyService tagHierarchyService, int showArchived = 0)
         {
             try
             {
@@ -247,7 +247,8 @@ namespace VideoLibrary.Controllers
                                 .Where(t => _context.VideoTags.Any(vt => vt.TagId == t.Id) ||
                                             _context.PlaylistTags.Any(vt => vt.TagId == t.Id) ||
                                             _context.GalleryTags.Any(gt => gt.TagId == t.Id) ||
-                                            _context.ContentTags.Any(gt => gt.TagId == t.Id))
+                                            _context.ContentTags.Any(gt => gt.TagId == t.Id) ||
+                                            t.Level == 0)
                                 .Include(tag => tag.VideoTags)
                                 .Include(tag => tag.GalleryTags)
                                 .Include(tag => tag.PlaylistTags)
@@ -372,12 +373,12 @@ namespace VideoLibrary.Controllers
 
                 ViewBag.IsSearch = false;
 
-                return View("Tags", viewModel);
+                return View("TagsNew", viewModel);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading tags page");
-                return View("Tags", new GroupedTagsViewModel());
+                return View("TagsNew", new GroupedTagsViewModel());
             }
         }
 
