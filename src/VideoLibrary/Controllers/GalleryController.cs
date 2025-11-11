@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using VideoLibrary.Models;
-using VideoLibrary.Services;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 using System.Collections.Generic;
+using VideoLibrary.Models;
 using VideoLibrary.Models.ViewModels;
+using VideoLibrary.Services;
 
 namespace VideoLibrary.Controllers
 {
@@ -185,9 +188,16 @@ namespace VideoLibrary.Controllers
             var filenameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
             var extension = Path.GetExtension(fileName);
 
-            var thumbnailPath = Path.Combine(gallery.FolderPath, "thumbnails", $"{filenameWithoutExtension}_thumb{extension}");
+            var largeThumbnailPath = Path.Combine(gallery.FolderPath, "thumbnails", $"{filenameWithoutExtension}_lgthumb{extension}");
             
-            gallery.ThumbnailPath = thumbnailPath;
+            if (!System.IO.File.Exists(largeThumbnailPath))
+            {
+                var mediumPath = Path.Combine(gallery.FolderPath, "medium", $"{filenameWithoutExtension}_medium{extension}");
+
+                CreateResizedImage(mediumPath, largeThumbnailPath, 750);
+            }
+            
+            gallery.ThumbnailPath = largeThumbnailPath;
             await _context.SaveChangesAsync();
             
             return RedirectToAction(nameof(Details), new { id = galleryId });
@@ -201,7 +211,10 @@ namespace VideoLibrary.Controllers
                 return NotFound();
             }
 
-            var mediumPath = Path.Combine(gallery.FolderPath, "medium", fileName);
+            var filenameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+            var extension = Path.GetExtension(fileName);
+
+            var mediumPath = Path.Combine(gallery.FolderPath, "medium", $"{filenameWithoutExtension}_medium{extension}");
             var fullImagePath = Path.Combine(gallery.FolderPath, fileName);
 
             var imagePath = System.IO.File.Exists(mediumPath) ? mediumPath : fullImagePath;
@@ -251,6 +264,25 @@ namespace VideoLibrary.Controllers
                 ".tiff" or ".tif" => "image/tiff",
                 _ => "application/octet-stream"
             };
+        }
+
+        private void CreateResizedImage(string sourcePath, string destinationPath, int maxSize)
+        {
+            var encoder = new JpegEncoder { Quality = 90 };
+
+            using var image = SixLabors.ImageSharp.Image.Load(sourcePath);
+            var (newWidth, newHeight) = CalculateNewDimensions(image.Width, image.Height, maxSize);
+
+            image.Mutate(x => x.Resize(newWidth, newHeight));
+            image.Save(destinationPath, encoder);
+        }
+        private (int width, int height) CalculateNewDimensions(int originalWidth, int originalHeight, int maxSize)
+        {
+            if (originalWidth <= maxSize && originalHeight <= maxSize)
+                return (originalWidth, originalHeight);
+
+            double ratio = Math.Min((double)maxSize / originalWidth, (double)maxSize / originalHeight);
+            return ((int)(originalWidth * ratio), (int)(originalHeight * ratio));
         }
     }
 }

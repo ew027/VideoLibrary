@@ -7,7 +7,8 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Tags</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Home</a></li>
+        <li class="breadcrumb-item"><a href="@Url.Action("Tags", "Home")">Tags</a></li>
         <li class="breadcrumb-item"><a href="@Url.Action("Details", "Gallery", new { id = Model.Gallery.Id })">@Model.Gallery.Name</a></li>
         <li class="breadcrumb-item active">Image @(Model.CurrentImageIndex + 1)</li>
     </ol>

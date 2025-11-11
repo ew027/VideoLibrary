@@ -441,10 +441,9 @@ namespace VideoLibrary.Controllers
                 return NotFound();
             }
 
-            var fileStream = new FileStream(video.FilePath, FileMode.Open, FileAccess.Read);
             var contentType = GetContentType(video.FilePath);
 
-            return File(fileStream, contentType, enableRangeProcessing: true);
+            return PhysicalFile(video.FilePath, contentType, enableRangeProcessing: true);
         }
 
         public IActionResult Thumbnail(int id)

@@ -114,7 +114,7 @@ class TagThumbnailPicker {
                     <img src="${thumbnailUrl}" 
                          class="card-img-top" 
                          alt="${item.title}"
-                         style="height: 150px; object-fit: cover;">
+                         style="height: 150px; object-fit: cover;object-position: top;">
                     <div class="card-body p-2">
                         <p class="card-text small mb-1">
                             <i class="bi bi-${item.type === 'video' ? 'camera-video' : 'images'}"></i>
